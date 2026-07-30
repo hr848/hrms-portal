@@ -1,0 +1,239 @@
+﻿<script type="module" crossorigin src="./assets/index-BteUZ4Gp.js"></script>
+<link rel="stylesheet" crossorigin href="./assets/index-BpNqgoGG.css">
+<style>
+  .hrms-upload-caption {
+    margin: 0 0 8px;
+    color: #122033;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .hrms-employee-status-chart {
+    margin-top: 24px;
+    padding: 20px 18px;
+    border: 1px solid #0f172a;
+    border-radius: 18px;
+    background: #f8fafc;
+    color: #122033;
+  }
+  .hrms-employee-chart-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+  .hrms-employee-chart-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #1e293b;
+  }
+  .hrms-employee-chart-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+  }
+  .hrms-employee-chart-days {
+    min-width: 44px;
+    border: 1px solid #0f172a;
+    border-radius: 8px;
+    padding: 5px 8px;
+    text-align: center;
+    font-weight: 900;
+    color: #0f172a;
+    background: #fff;
+  }
+  .hrms-employee-chart-average {
+    min-width: 120px;
+    border-radius: 12px;
+    padding: 8px 14px;
+    text-align: center;
+    color: #fff;
+    background: #10b981;
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.18);
+  }
+  .hrms-employee-chart-average.warn { background: #ef4444; }
+  .hrms-employee-chart-average span:first-child {
+    display: block;
+    font-size: 9px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .hrms-employee-chart-average span:last-child {
+    display: block;
+    font-size: 16px;
+    font-weight: 900;
+  }
+  .hrms-employee-chart-svg {
+    width: 100%;
+    min-height: 285px;
+    overflow: visible;
+  }
+</style>
+<div id="root"></div>
+<script>
+  (() => {
+    const labels = [
+      "Proposed schedule / Proposed Office Time Sheet (.xlsx or .xls)",
+      "Monthly attendance data / Attendance Log (.xlsx or .xls)"
+    ];
+
+    const applyUploadHints = () => {
+      document.querySelectorAll("input[type='file']").forEach((input, index) => {
+        input.setAttribute("accept", ".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        if (input.dataset.hrmsUploadHint === "ready") return;
+        input.dataset.hrmsUploadHint = "ready";
+        const caption = document.createElement("div");
+        caption.className = "hrms-upload-caption";
+        caption.textContent = labels[index] || "Excel upload (.xlsx or .xls)";
+        input.parentElement?.insertBefore(caption, input);
+      });
+      document.querySelectorAll("p, span, div").forEach((node) => {
+        if (node.childNodes.length === 1 && node.textContent === "Upload Proposed Office Time Sheet and Attendance Log (.xlsx)") {
+          node.textContent = "Left box: proposed schedule. Right box: monthly attendance data. Accepted formats: .xlsx and .xls.";
+        }
+      });
+    };
+
+    const text = (node) => node?.textContent?.trim() || "";
+    const normalizedStatus = (value) => (value || "").trim().toLowerCase();
+
+    const readDetailedRows = () => {
+      const section = document.querySelector("#detailed-records");
+      if (!section) return [];
+      return [...section.querySelectorAll("tbody tr")].map((row) => {
+        const cells = [...row.children];
+        const statusControl = cells[6]?.querySelector("select");
+        return {
+          employee: text(cells[0]),
+          date: text(cells[1]),
+          actualEntry: text(cells[4]),
+          actualExit: text(cells[5]),
+          status: statusControl ? statusControl.value : text(cells[6]),
+          workingHours: Number.parseFloat(text(cells[7]))
+        };
+      }).filter((row) => row.employee);
+    };
+
+    const daysInMonth = (year, month) => new Date(year, month, 0).getDate();
+
+    const workingDaysForRows = (rows) => {
+      if (!rows.length) return 26;
+      const parts = rows[0].date.split("-").map((part) => Number.parseInt(part, 10));
+      if (parts.length < 2 || Number.isNaN(parts[0]) || Number.isNaN(parts[1])) return 26;
+      const [year, month] = parts;
+      let sundays = 0;
+      for (let day = 1; day <= daysInMonth(year, month); day += 1) {
+        if (new Date(year, month - 1, day).getDay() === 0) sundays += 1;
+      }
+      const holidays = rows.filter((row) => normalizedStatus(row.status) === "holiday").length;
+      return Math.max(0, daysInMonth(year, month) - sundays - holidays);
+    };
+
+    const chartCounts = (rows) => {
+      const counts = {
+        "PRESENT DAY": 0,
+        "ON TIME ENTRY": 0,
+        "ON TIME EXIT": 0,
+        "EXIT MISSING": 0,
+        "ENTRY MISSING": 0,
+        "SUNDAY": 0,
+        "EARLY EXIT": 0,
+        "LATE ENTRY": 0,
+        "HOLIDAY": 0,
+        "WFH": 0,
+        "LEAVE": 0
+      };
+      rows.forEach((row) => {
+        const status = normalizedStatus(row.status);
+        const hasPunch = [row.actualEntry, row.actualExit].some((value) => value && value !== "-");
+        const isNotAbsent = !status.includes("no attendance") && !status.includes("leave") && !status.includes("holiday") && !status.includes("sunday");
+        if ((hasPunch && isNotAbsent) || status === "present") counts["PRESENT DAY"] += 1;
+        const hasOnTimeEntry = status.includes("ontime entry") || status.includes("on time entry");
+        const hasCombinedOnTime = status.includes("ontime entry & exit") || status.includes("on time entry & exit");
+        const hasOnTimeExit = status.includes("ontime exit") || status.includes("on time exit") || hasCombinedOnTime;
+        if (hasOnTimeEntry) counts["ON TIME ENTRY"] += 1;
+        if (hasOnTimeExit) counts["ON TIME EXIT"] += 1;
+        if (status.includes("late entry")) counts["LATE ENTRY"] += 1;
+        if (status.includes("entry missing")) counts["ENTRY MISSING"] += 1;
+        if (status.includes("early exit")) counts["EARLY EXIT"] += 1;
+        if (status.includes("exit missing")) counts["EXIT MISSING"] += 1;
+        if (status.includes("holiday")) counts["HOLIDAY"] += 1;
+        if (status.includes("wfh")) counts["WFH"] += 1;
+        if (status.includes("leave")) counts["LEAVE"] += 1;
+        if (status.includes("sunday")) counts["SUNDAY"] += 1;
+      });
+      return Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+    };
+
+    const barColor = (name) => {
+      if (name.includes("LATE")) return "#ef4444";
+      if (name.includes("ON TIME")) return "#22c55e";
+      if (name.includes("MISSING")) return "#f97316";
+      return "#60a5fa";
+    };
+
+    const renderEmployeeStatusChart = () => {
+      const section = document.querySelector("#detailed-records");
+      if (!section) return;
+      let chart = section.querySelector(".hrms-employee-status-chart");
+      const rows = readDetailedRows();
+      const employees = [...new Set(rows.map((row) => row.employee))];
+      if (employees.length !== 1 || !rows.length) {
+        chart?.remove();
+        return;
+      }
+      if (!chart) {
+        chart = document.createElement("div");
+        chart.className = "hrms-employee-status-chart";
+        section.appendChild(chart);
+      }
+      const employee = employees[0];
+      const signature = JSON.stringify(rows.map((row) => [row.employee, row.date, row.actualEntry, row.actualExit, row.status, row.workingHours]));
+      if (chart.dataset.hrmsChartSignature === signature) return;
+      chart.dataset.hrmsChartSignature = signature;
+      const hours = rows.map((row) => row.workingHours).filter((value) => Number.isFinite(value));
+      const average = hours.length ? Math.round((hours.reduce((sum, value) => sum + value, 0) / hours.length) * 100) / 100 : 0;
+      const counts = chartCounts(rows);
+      const max = Math.max(1, ...counts.map((item) => item.count));
+      const width = 1000;
+      const height = 285;
+      const top = 24;
+      const bottom = 64;
+      const left = 34;
+      const gap = 18;
+      const barWidth = Math.min(54, Math.max(26, (width - left - 20 - (counts.length - 1) * gap) / counts.length));
+      const plotHeight = height - top - bottom;
+      const grid = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+        const y = top + plotHeight - ratio * plotHeight;
+        const value = Math.round(max * ratio);
+        return `<line x1="${left}" x2="${width - 12}" y1="${y}" y2="${y}" stroke="#e2e8f0" stroke-dasharray="3 3"></line><text x="${left - 10}" y="${y + 4}" text-anchor="end" font-size="10" fill="#64748b">${value}</text>`;
+      }).join("");
+      const bars = counts.map((item, index) => {
+        const x = left + index * (barWidth + gap);
+        const h = Math.round((item.count / max) * (plotHeight - 12));
+        const y = top + plotHeight - h;
+        const labelX = x + barWidth / 2;
+        const valueLabel = item.count ? item.count : "";
+        return `<rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="7" fill="${barColor(item.name)}"></rect><text x="${labelX}" y="${y - 7}" text-anchor="middle" font-size="11" font-weight="800" fill="#475569">${valueLabel}</text><text x="${labelX - 4}" y="${height - 14}" text-anchor="end" transform="rotate(-25 ${labelX} ${height - 14})" font-size="9" font-weight="700" fill="#64748b">${item.name}</text>`;
+      }).join("");
+      chart.innerHTML = `<div class="hrms-employee-chart-head"><div class="hrms-employee-chart-title">Attendance &amp; Time Tracking Overview: ${employee}</div><div class="hrms-employee-chart-meta"><span>Total Working Days:</span><span class="hrms-employee-chart-days">${workingDaysForRows(rows)}</span><span class="hrms-employee-chart-average ${average >= 9 ? "" : "warn"}"><span>Average Time Spent</span><span>${average}h</span></span></div></div><svg class="hrms-employee-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Attendance and time tracking overview for ${employee}">${grid}${bars}</svg>`;
+    };
+
+    window.addEventListener("DOMContentLoaded", () => {
+      applyUploadHints();
+      renderEmployeeStatusChart();
+      new MutationObserver(() => {
+        applyUploadHints();
+        renderEmployeeStatusChart();
+      }).observe(document.body, { childList: true, subtree: true });
+      document.addEventListener("input", () => setTimeout(renderEmployeeStatusChart, 0));
+      document.addEventListener("change", () => setTimeout(renderEmployeeStatusChart, 0));
+    });
+  })();
+</script>
+
+
+
