@@ -1,0 +1,26 @@
+# Dependencies and generated folders
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+
+# Local runtime files
+.env
+*.log
+*.pid
+.integrated-services-pids.json
+.server.err.log
+.server.log
+.server.pid
+
+# Local backup/safety copies
+*.pre-*
+*.bak
+*.tmp
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
