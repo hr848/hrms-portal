@@ -1,6 +1,7 @@
 import base64
 import inspect
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -20,6 +21,59 @@ from app.services.analytics_service import store  # noqa: E402
 from server import parse_employee_docx  # noqa: E402
 
 ANALYTICS_STATE_BLOB = "hrms/attendance-analytics-state.json"
+APP_STATE_KEY = "default"
+
+
+def _database_url() -> str:
+    return os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL") or ""
+
+
+def _open_db():
+    database_url = _database_url()
+    if not database_url:
+        raise RuntimeError("DATABASE_URL is not configured. Connect a Postgres database in Vercel first.")
+    import psycopg
+
+    return psycopg.connect(database_url)
+
+
+def _ensure_state_table(connection) -> None:
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            create table if not exists hrms_portal_state (
+                app_key text primary key,
+                payload jsonb not null,
+                updated_at timestamptz not null default now()
+            )
+            """
+        )
+    connection.commit()
+
+
+def _read_shared_state():
+    with _open_db() as connection:
+        _ensure_state_table(connection)
+        with connection.cursor() as cursor:
+            cursor.execute("select payload from hrms_portal_state where app_key = %s", (APP_STATE_KEY,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+
+def _write_shared_state(payload: dict) -> None:
+    with _open_db() as connection:
+        _ensure_state_table(connection)
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                insert into hrms_portal_state (app_key, payload, updated_at)
+                values (%s, %s::jsonb, now())
+                on conflict (app_key)
+                do update set payload = excluded.payload, updated_at = now()
+                """,
+                (APP_STATE_KEY, json.dumps(payload)),
+            )
+        connection.commit()
 
 app = FastAPI(title="HRMS Portal API", version="1.0.0")
 app.add_middleware(
@@ -128,3 +182,29 @@ async def parse_employee_docx_endpoint(request: Request):
         return parse_employee_docx(base64.b64decode(encoded))
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+@app.get("/api/state")
+def get_shared_state():
+    try:
+        payload = _read_shared_state()
+        return {"configured": True, "state": payload}
+    except RuntimeError as exc:
+        return {"configured": False, "state": None, "message": str(exc)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.put("/api/state")
+async def put_shared_state(request: Request):
+    try:
+        payload = await request.json()
+        state_payload = payload.get("state") if isinstance(payload, dict) else None
+        if not isinstance(state_payload, dict):
+            raise ValueError("Missing shared state payload.")
+        _write_shared_state(state_payload)
+        return {"ok": True}
+    except RuntimeError as exc:
+        return {"ok": False, "configured": False, "message": str(exc)}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+

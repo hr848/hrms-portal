@@ -1,4 +1,14 @@
 const STORAGE_KEY = "hrms-portal-prototype-recovered-v2";
+const REMOTE_STATE_ENDPOINT = "/api/state";
+const CLIENT_ONLY_STATE_KEYS = new Set([
+  "session", "selectedLogin", "ticketLoginType", "ticketSession", "ticketFilter", "ticketDraftGroupId", "ticketSection", "ticketProfileOpen",
+  "activeSection", "selectedEmployeeId", "selectedLeaveWfhEmployeeId", "adminEmployeeView", "selectedHolidayGroupId",
+  "attendanceFilterDate", "attendanceFilterFrom", "attendanceFilterTo", "attendanceSearchQuery", "attendanceReportMode", "attendanceFilterMonth", "attendanceEmployeeStatusFilter", "employeeAttendanceCalendarMonth",
+  "adjustmentHistoryFilterEmployee", "adjustmentHistoryFilterDate", "wfhHistoryFilterEmployee", "wfhHistoryFilterMonth",
+  "adminLeaveWfhReportSearch", "adminLeaveWfhReportEmployeeId", "adminLeaveWfhReportDateMode", "adminLeaveWfhReportMonth", "adminLeaveWfhReportYear", "adminLeaveWfhReportFrom", "adminLeaveWfhReportTo", "adminLeaveWfhReportType",
+  "adminLeaveWfhCalendarMonth", "adminLeaveWfhCalendarDate", "adminLeaveWfhCalendarEmployeeId",
+  "wfhRequestDraft", "leaveRequestDraft", "leaveWfhCalendarMonth", "leaveWfhSelectedDates", "leaveWfhRequestType", "leaveWfhRequestReason", "leaveWfhDatePicker"
+]);
 const TEMP_PASSWORD = "welcome@123";
 
 const DOCX_REQUIRED_FIELD_KEYS = new Set([
@@ -223,6 +233,8 @@ const seedDataBtn = document.querySelector("#seedDataBtn");
 const notificationBtn = document.querySelector("#notificationBtn");
 const notificationBadge = document.querySelector("#notificationBadge");
 const notificationCountLabel = document.querySelector("#notificationCountLabel");
+let remoteStateConfigured = false;
+let remoteSaveTimer = null;
 let state = loadState();
 let groupPickerOutsideClickBound = false;
 
@@ -714,6 +726,15 @@ function normalizeState(input) {
   if (!normalized.selectedEmployeeId) normalized.selectedEmployeeId = normalized.employees[0]?.id || null;
   return normalized;
 }
+function pickStateKeys(source, keys) {
+  return Object.fromEntries(Array.from(keys).filter((key) => Object.prototype.hasOwnProperty.call(source || {}, key)).map((key) => [key, source[key]]));
+}
+function getClientStateSnapshot(source = state) {
+  return pickStateKeys(source || {}, CLIENT_ONLY_STATE_KEYS);
+}
+function getSharedStateSnapshot(source = state) {
+  return Object.fromEntries(Object.entries(source || {}).filter(([key]) => !CLIENT_ONLY_STATE_KEYS.has(key)));
+}
 function loadState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -722,10 +743,56 @@ function loadState() {
     return normalizeState(clone(defaultState));
   }
 }
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function saveClientState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(getClientStateSnapshot(state)));
+}
+function scheduleRemoteStateSave(sharedState = getSharedStateSnapshot(state), immediate = false) {
+  if (!remoteStateConfigured) return;
+  window.clearTimeout(remoteSaveTimer);
+  const persist = async () => {
+    try {
+      const response = await fetch(REMOTE_STATE_ENDPOINT, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state: sharedState })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) throw new Error(data.detail || data.message || "Shared database save failed.");
+    } catch (error) {
+      console.warn("Shared HRMS state was not saved to the database.", error);
+    }
+  };
+  remoteSaveTimer = window.setTimeout(persist, immediate ? 0 : 450);
+}
+function saveState() {
+  saveClientState();
+  scheduleRemoteStateSave();
+}
 function setState(patch) { state = normalizeState({ ...state, ...patch }); saveState(); render(); }
-function resetState() { state = normalizeState(clone(defaultState)); saveState(); render(); }
-
+function resetState() {
+  state = normalizeState(clone(defaultState));
+  saveState();
+  render();
+}
+async function initializeSharedState() {
+  try {
+    const response = await fetch(REMOTE_STATE_ENDPOINT, { cache: "no-store" });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Unable to load shared database state.");
+    remoteStateConfigured = Boolean(data.configured);
+    if (!remoteStateConfigured) return;
+    if (data.state && typeof data.state === "object") {
+      const clientState = getClientStateSnapshot(state);
+      state = normalizeState({ ...clone(defaultState), ...data.state, ...clientState });
+      saveClientState();
+      render();
+      return;
+    }
+    scheduleRemoteStateSave(getSharedStateSnapshot(state), true);
+  } catch (error) {
+    console.warn("Shared HRMS database is not available yet. Using browser session state only.", error);
+  }
+}
 function buildOfferContent(employee) {
   return {
     subject: interpolateTemplate(employee.hiring.offerDraftSubject || state.offerTemplate.subject, {
@@ -4087,127 +4154,5 @@ seedDataBtn.addEventListener("click", () => {
 });
 
 render();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+initializeSharedState();
 
