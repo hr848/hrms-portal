@@ -1239,7 +1239,7 @@ h1 {
 
 .admin-activity-filter-cell input {
   width: 100%;
-  min-width: 120px;
+  min-width: 104px;
   border: 1px solid rgba(16, 24, 40, 0.12);
   border-radius: 10px;
   background: #ffffff;
@@ -1257,7 +1257,7 @@ h1 {
 }
 
 .sheet-static-cell {
-  min-width: 120px;
+  min-width: 104px;
   color: var(--text);
   line-height: 1.45;
   white-space: pre-wrap;
@@ -3597,14 +3597,29 @@ button:disabled {
 
 .admin-leave-wfh-report-filters {
   display: grid;
-  grid-template-columns: minmax(220px, 1.5fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(180px, 1fr) auto;
-  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+  gap: 0.55rem;
   align-items: end;
-  margin-bottom: 1rem;
+  margin-bottom: 0.7rem;
 }
 
 .admin-leave-wfh-report-filters .field {
   margin: 0;
+}
+
+.admin-leave-wfh-report-filters label {
+  font-size: 0.78rem;
+}
+
+.admin-leave-wfh-report-filters input,
+.admin-leave-wfh-report-filters select {
+  min-height: 42px;
+  padding: 0.58rem 0.72rem;
+}
+
+.admin-leave-wfh-report-table th,
+.admin-leave-wfh-report-table td {
+  padding: 0.68rem 0.75rem;
 }
 
 .admin-leave-wfh-report-actions {
@@ -3613,42 +3628,42 @@ button:disabled {
 }
 
 .admin-leave-wfh-report-wrap {
-  max-height: 420px;
+  max-height: 390px;
   overflow: auto;
 }
 
 .admin-leave-wfh-report-table {
-  min-width: 920px;
+  min-width: 860px;
 }
 
 .admin-leave-wfh-report-table th:nth-child(1),
 .admin-leave-wfh-report-table td:nth-child(1) {
-  min-width: 120px;
+  min-width: 104px;
 }
 
 .admin-leave-wfh-report-table th:nth-child(2),
 .admin-leave-wfh-report-table td:nth-child(2) {
-  min-width: 210px;
+  min-width: 160px;
 }
 
 .admin-leave-wfh-report-table th:nth-child(3),
 .admin-leave-wfh-report-table td:nth-child(3) {
-  min-width: 120px;
+  min-width: 104px;
 }
 
 .admin-leave-wfh-report-table th:nth-child(4),
 .admin-leave-wfh-report-table td:nth-child(4) {
-  min-width: 170px;
+  min-width: 142px;
 }
 
 .admin-leave-wfh-report-table th:nth-child(5),
 .admin-leave-wfh-report-table td:nth-child(5) {
-  min-width: 120px;
+  min-width: 104px;
 }
 
 .admin-leave-wfh-report-table th:nth-child(6),
 .admin-leave-wfh-report-table td:nth-child(6) {
-  min-width: 280px;
+  min-width: 230px;
 }
 .report-total-footer {
   align-items: center;
@@ -3722,4 +3737,5 @@ button:disabled {
   color: var(--muted);
   font-size: 0.86rem;
 }
+
 

@@ -139,6 +139,10 @@ const defaultState = {
   wfhHistoryFilterEmployee: "EMP-1001",
   wfhHistoryFilterMonth: new Date().toISOString().slice(0, 7),
   adminLeaveWfhReportSearch: "",
+  adminLeaveWfhReportEmployeeId: "",
+  adminLeaveWfhReportDateMode: "all",
+  adminLeaveWfhReportMonth: new Date().toISOString().slice(0, 7),
+  adminLeaveWfhReportYear: String(new Date().getFullYear()),
   adminLeaveWfhReportFrom: "",
   adminLeaveWfhReportTo: "",
   adminLeaveWfhReportType: "",
@@ -699,6 +703,10 @@ function normalizeState(input) {
   normalized.wfhHistoryFilterEmployee = normalized.wfhHistoryFilterEmployee || normalized.selectedLeaveWfhEmployeeId || normalized.selectedEmployeeId || normalized.employees[0]?.id || "";
   normalized.wfhHistoryFilterMonth = normalized.wfhHistoryFilterMonth || new Date().toISOString().slice(0, 7);
   normalized.adminLeaveWfhReportSearch = normalized.adminLeaveWfhReportSearch || "";
+  normalized.adminLeaveWfhReportEmployeeId = normalized.adminLeaveWfhReportEmployeeId || "";
+  normalized.adminLeaveWfhReportDateMode = ["all", "month", "year", "custom"].includes(normalized.adminLeaveWfhReportDateMode) ? normalized.adminLeaveWfhReportDateMode : "all";
+  normalized.adminLeaveWfhReportMonth = /^\d{4}-\d{2}$/.test(normalized.adminLeaveWfhReportMonth || "") ? normalized.adminLeaveWfhReportMonth : new Date().toISOString().slice(0, 7);
+  normalized.adminLeaveWfhReportYear = /^\d{4}$/.test(String(normalized.adminLeaveWfhReportYear || "")) ? String(normalized.adminLeaveWfhReportYear) : String(new Date().getFullYear());
   normalized.adminLeaveWfhReportFrom = normalizeActivityDateValue(normalized.adminLeaveWfhReportFrom || "");
   normalized.adminLeaveWfhReportTo = normalizeActivityDateValue(normalized.adminLeaveWfhReportTo || "");
   normalized.adminLeaveWfhReportType = ["", "wfh", "privilege", "sick"].includes(normalized.adminLeaveWfhReportType) ? normalized.adminLeaveWfhReportType : "";
@@ -1292,7 +1300,7 @@ function getCurrentTicketUser() {
   return getTicketDirectory().find((user) => user.email.toLowerCase() === String(state.ticketSession.email || "").toLowerCase() && user.role === state.ticketSession.role) || state.ticketSession;
 }
 function renderTicketLoginPage() {
-  return `<div class="ticket-login-shell"><div class="ticket-login-card"><div class="section-header"><div><p class="eyebrow">Raise Ticket</p><h2>Sign in to support desk</h2></div><a class="ticket-hrms-link" href="http://127.0.0.1:4173/index.html"><span class="ticket-back-arrow">&#8592;</span> Back</a></div><p class="helper">Use the same credentials as HRMS. Admin and employee access are synced automatically from the HRMS portal.</p><div class="login-switch"><button class="tab-btn ${state.ticketLoginType === "admin" ? "active" : ""}" data-ticket-login-type="admin" type="button">Admin Login</button><button class="tab-btn ${state.ticketLoginType === "employee" ? "active" : ""}" data-ticket-login-type="employee" type="button">Login</button></div><form id="ticketLoginForm" class="stack"><div class="field"><label for="ticketLoginEmail">Email</label><input id="ticketLoginEmail" type="email" value="${state.ticketLoginType === "admin" ? escapeHtml(state.adminProfile.email) : ""}" placeholder="${state.ticketLoginType === "admin" ? escapeHtml(state.adminProfile.email) : "employee@company.com"}" required /></div><div class="field"><label for="ticketLoginPassword">Password</label><input id="ticketLoginPassword" type="password" placeholder="${TEMP_PASSWORD}" required /></div><button class="primary-btn" type="submit">Enter Raise Ticket</button></form></div></div>`;
+  return `<div class="ticket-login-shell"><div class="ticket-login-card"><div class="section-header"><div><p class="eyebrow">Raise Ticket</p><h2>Sign in to support desk</h2></div><a class="ticket-hrms-link" href="/index.html"><span class="ticket-back-arrow">&#8592;</span> Back</a></div><p class="helper">Use the same credentials as HRMS. Admin and employee access are synced automatically from the HRMS portal.</p><div class="login-switch"><button class="tab-btn ${state.ticketLoginType === "admin" ? "active" : ""}" data-ticket-login-type="admin" type="button">Admin Login</button><button class="tab-btn ${state.ticketLoginType === "employee" ? "active" : ""}" data-ticket-login-type="employee" type="button">Login</button></div><form id="ticketLoginForm" class="stack"><div class="field"><label for="ticketLoginEmail">Email</label><input id="ticketLoginEmail" type="email" value="${state.ticketLoginType === "admin" ? escapeHtml(state.adminProfile.email) : ""}" placeholder="${state.ticketLoginType === "admin" ? escapeHtml(state.adminProfile.email) : "employee@company.com"}" required /></div><div class="field"><label for="ticketLoginPassword">Password</label><input id="ticketLoginPassword" type="password" placeholder="${TEMP_PASSWORD}" required /></div><button class="primary-btn" type="submit">Enter Raise Ticket</button></form></div></div>`;
 }
 function renderTicketStandalonePage() {
   return `<div class="ticket-home-shell ticket-standalone-shell">${state.ticketSession ? renderTicketPortal() : renderTicketLoginPage()}</div>`;
@@ -1382,7 +1390,7 @@ function renderTicketPortal() {
   const section = getTicketActiveSection();
   const user = getCurrentTicketUser();
   const adminNav = state.ticketSession?.role === "admin" ? ticketNavButton("users", "Add user", "") : "";
-  return `<section class="ticket-portal"><div class="ticket-topbar"><div class="ticket-brand"><strong>raiseaticket</strong><a class="ticket-hrms-link" href="http://127.0.0.1:4173/index.html"><span class="ticket-back-arrow">&#8592;</span> Back</a><span>|</span><span>AVANZAR IT ...</span></div><nav>${ticketNavButton("dashboard", "Dashboard", "")}${ticketNavButton("raise", "Raise a ticket", "+")}${ticketNavButton("tickets", "Tickets", "")}${ticketNavButton("reports", "Reports", "")}${ticketNavButton("resources", "Resources", "")}${adminNav}</nav><div class="ticket-profile-wrap"><button class="ticket-profile-btn" id="ticketProfileBtn" type="button"><span class="ticket-profile-user">${escapeHtml(user?.name || "Ticket User")}</span><span class="ticket-avatar-dot"></span></button>${state.ticketProfileOpen ? renderTicketProfileMenu() : ""}</div></div><div class="ticket-body">${renderTicketSection(section)}</div><button class="ticket-live-help" type="button">Live Help</button></section>`;
+  return `<section class="ticket-portal"><div class="ticket-topbar"><div class="ticket-brand"><strong>raiseaticket</strong><a class="ticket-hrms-link" href="/index.html"><span class="ticket-back-arrow">&#8592;</span> Back</a><span>|</span><span>AVANZAR IT ...</span></div><nav>${ticketNavButton("dashboard", "Dashboard", "")}${ticketNavButton("raise", "Raise a ticket", "+")}${ticketNavButton("tickets", "Tickets", "")}${ticketNavButton("reports", "Reports", "")}${ticketNavButton("resources", "Resources", "")}${adminNav}</nav><div class="ticket-profile-wrap"><button class="ticket-profile-btn" id="ticketProfileBtn" type="button"><span class="ticket-profile-user">${escapeHtml(user?.name || "Ticket User")}</span><span class="ticket-avatar-dot"></span></button>${state.ticketProfileOpen ? renderTicketProfileMenu() : ""}</div></div><div class="ticket-body">${renderTicketSection(section)}</div><button class="ticket-live-help" type="button">Live Help</button></section>`;
 }
 function renderTicketProfileMenu() {
   const user = getCurrentTicketUser();
@@ -1460,7 +1468,7 @@ function renderAdminDashboard() {
   const activeEmployees = state.employees.filter((item) => item.status === "Active").length;
   const totalAttendance = state.employees.reduce((sum, item) => sum + item.attendance.length, 0);
   const totalActivities = state.employees.reduce((sum, item) => sum + item.activities.length, 0);
-  return `<section class="dashboard"><aside class="panel sidebar"><p class="eyebrow">Admin console</p><h2>${escapeHtml(state.adminProfile.name)}</h2><p class="muted">${escapeHtml(state.adminProfile.email)}</p><nav>${navButton("overview", "Overview")}${navButton("employees", "Employees")}${navButton("employee_grouping", "Employee grouping")}${navButton("attendance", "Attendance")}${externalNavButton("Attendance analytics", "http://127.0.0.1:4173/attendance-analytics/index.html")}${navButton("leave_wfh", "Leave and WFH")}${navButton("holiday", "Holiday")}${navButton("attendance_adjustment", "Attendance adjustment")}${navButton("activity", "Activity template")}${navButton("activity_tracker", "Activity tracker")}${navButton("hiring", "Hiring setup")}</nav></aside><div class="content">${renderAdminSection(activeEmployees, totalAttendance, totalActivities)}</div></section>`;
+  return `<section class="dashboard"><aside class="panel sidebar"><p class="eyebrow">Admin console</p><h2>${escapeHtml(state.adminProfile.name)}</h2><p class="muted">${escapeHtml(state.adminProfile.email)}</p><nav>${navButton("overview", "Overview")}${navButton("employees", "Employees")}${navButton("employee_grouping", "Employee grouping")}${navButton("attendance", "Attendance")}${externalNavButton("Attendance analytics", "/attendance-analytics/index.html")}${navButton("leave_wfh", "Leave and WFH")}${navButton("holiday", "Holiday")}${navButton("attendance_adjustment", "Attendance adjustment")}${navButton("activity", "Activity template")}${navButton("activity_tracker", "Activity tracker")}${navButton("hiring", "Hiring setup")}</nav></aside><div class="content">${renderAdminSection(activeEmployees, totalAttendance, totalActivities)}</div></section>`;
 }
 function renderAdminSection(activeEmployees, totalAttendance, totalActivities) {
   const selected = getSelectedEmployee();
@@ -1819,10 +1827,49 @@ function getAdminLeaveWfhReportTypeLabel(value) {
   if (value === "sick") return "Sick Leave";
   return "All types";
 }
+function getAdminLeaveWfhReportYearOptions() {
+  const years = new Set([String(new Date().getFullYear())]);
+  getAdminLeaveWfhEvents().forEach((event) => {
+    const match = normalizeActivityDateValue(event.date).match(/^\d{2}-\d{2}-(\d{4})$/);
+    if (match) years.add(match[1]);
+  });
+  return Array.from(years).sort((a, b) => Number(b) - Number(a));
+}
+function getAdminLeaveWfhReportDateRange() {
+  const mode = state.adminLeaveWfhReportDateMode || "all";
+  if (mode === "month") return getFullMonthDateRange(state.adminLeaveWfhReportMonth || new Date().toISOString().slice(0, 7));
+  if (mode === "year") {
+    const year = /^\d{4}$/.test(String(state.adminLeaveWfhReportYear || "")) ? String(state.adminLeaveWfhReportYear) : String(new Date().getFullYear());
+    return { from: `01-01-${year}`, to: `31-12-${year}` };
+  }
+  if (mode === "custom") {
+    return {
+      from: normalizeActivityDateValue(state.adminLeaveWfhReportFrom || ""),
+      to: normalizeActivityDateValue(state.adminLeaveWfhReportTo || "")
+    };
+  }
+  return { from: "", to: "" };
+}
+function getAdminLeaveWfhReportFilterLabel() {
+  const mode = state.adminLeaveWfhReportDateMode || "all";
+  if (mode === "month") return `Month: ${getMonthLabel(state.adminLeaveWfhReportMonth)}`;
+  if (mode === "year") return `Year: ${state.adminLeaveWfhReportYear || new Date().getFullYear()}`;
+  if (mode === "custom") {
+    const range = getAdminLeaveWfhReportDateRange();
+    if (range.from && range.to) return `${range.from} to ${range.to}`;
+    if (range.from) return `From ${range.from}`;
+    if (range.to) return `Until ${range.to}`;
+    return "Custom dates";
+  }
+  return "All time";
+}
+
 function getAdminLeaveWfhPortalReportRows() {
   const search = String(state.adminLeaveWfhReportSearch || "").trim().toLowerCase();
-  const fromDate = normalizeActivityDateValue(state.adminLeaveWfhReportFrom || "");
-  const toDate = normalizeActivityDateValue(state.adminLeaveWfhReportTo || "");
+  const employeeFilter = state.adminLeaveWfhReportEmployeeId || "";
+  const dateRange = getAdminLeaveWfhReportDateRange();
+  const fromDate = normalizeActivityDateValue(dateRange.from || "");
+  const toDate = normalizeActivityDateValue(dateRange.to || "");
   const typeFilter = state.adminLeaveWfhReportType || "";
   const employeeById = new Map((state.employees || []).map((employee) => [employee.id, employee]));
   const eventTypeKey = (event) => event.kind === "wfh" ? "wfh" : getLeaveTypeConfig(event.type).key;
@@ -1830,6 +1877,7 @@ function getAdminLeaveWfhPortalReportRows() {
     .filter((event) => {
       const employee = employeeById.get(event.employeeId);
       const employeeSearch = `${getEmployeeDisplayName(employee) || ""} ${employee?.id || event.employeeId || ""}`.toLowerCase();
+      if (employeeFilter && event.employeeId !== employeeFilter) return false;
       if (search && !employeeSearch.includes(search)) return false;
       if (fromDate && parseDateSortValue(event.date) < parseDateSortValue(fromDate)) return false;
       if (toDate && parseDateSortValue(event.date) > parseDateSortValue(toDate)) return false;
@@ -1867,12 +1915,20 @@ function renderAdminLeaveWfhReportEmployeeSuggestionButtons(query) {
 function renderAdminLeaveWfhReport(activeEmployees) {
   const rows = getAdminLeaveWfhPortalReportRows();
   const searchValue = state.adminLeaveWfhReportSearch || "";
+  const employeeValue = state.adminLeaveWfhReportEmployeeId || "";
+  const dateMode = state.adminLeaveWfhReportDateMode || "all";
+  const monthValue = state.adminLeaveWfhReportMonth || new Date().toISOString().slice(0, 7);
+  const yearValue = state.adminLeaveWfhReportYear || String(new Date().getFullYear());
   const fromValue = toDateInputValue(state.adminLeaveWfhReportFrom || "");
   const toValue = toDateInputValue(state.adminLeaveWfhReportTo || "");
   const typeValue = state.adminLeaveWfhReportType || "";
-  const suggestions = renderAdminLeaveWfhReportEmployeeSuggestionButtons(searchValue);
+  const employeeOptions = [`<option value="" ${employeeValue ? "" : "selected"}>All employees</option>`, ...activeEmployees.map((employee) => `<option value="${escapeHtml(employee.id)}" ${employeeValue === employee.id ? "selected" : ""}>${escapeHtml(getEmployeeDisplayName(employee))} (${escapeHtml(employee.id)})</option>`)].join("");
+  const yearOptions = getAdminLeaveWfhReportYearOptions().map((year) => `<option value="${escapeHtml(year)}" ${String(yearValue) === String(year) ? "selected" : ""}>${escapeHtml(year)}</option>`).join("");
+  const monthDisabled = dateMode === "month" ? "" : "disabled";
+  const yearDisabled = dateMode === "year" ? "" : "disabled";
+  const customDisabled = dateMode === "custom" ? "" : "disabled";
   const rowsHtml = rows.map((row) => `<tr><td>${escapeHtml(row.date)}</td><td>${escapeHtml(row.employeeName)}</td><td>${escapeHtml(row.employeeId)}</td><td>${escapeHtml(row.type)}</td><td><span class="pill ${getWfhStatusTone(row.status)}">${escapeHtml(row.status)}</span></td><td>${escapeHtml(row.reason)}</td></tr>`).join("");
-  return `<div class="card admin-leave-wfh-report-card"><div class="section-header"><div><p class="eyebrow">Report</p><h2>Leave and WFH report</h2></div><span class="pill">${rows.length} records</span></div><form id="adminLeaveWfhReportFilterForm" class="admin-leave-wfh-report-filters"><div class="field report-employee-search-field"><label for="adminLeaveWfhReportSearch">Employee</label><input id="adminLeaveWfhReportSearch" value="${escapeHtml(searchValue)}" placeholder="Search by name or employee ID" autocomplete="off" /><div class="report-employee-suggestions hidden" id="adminLeaveWfhReportSuggestions">${suggestions}</div></div><div class="field"><label for="adminLeaveWfhReportFrom">From date</label><input id="adminLeaveWfhReportFrom" type="date" value="${escapeHtml(fromValue)}" /></div><div class="field"><label for="adminLeaveWfhReportTo">To date</label><input id="adminLeaveWfhReportTo" type="date" value="${escapeHtml(toValue)}" /></div><div class="field"><label for="adminLeaveWfhReportType">Type</label><select id="adminLeaveWfhReportType"><option value="" ${typeValue ? "" : "selected"}>All types</option><option value="wfh" ${typeValue === "wfh" ? "selected" : ""}>Work From Home</option><option value="privilege" ${typeValue === "privilege" ? "selected" : ""}>Privilege Leave</option><option value="sick" ${typeValue === "sick" ? "selected" : ""}>Sick Leave</option></select></div><div class="actions admin-leave-wfh-report-actions"><button class="primary-btn" type="submit">Go</button><button class="secondary-btn" type="button" id="resetAdminLeaveWfhReportFiltersBtn">Reset filters</button></div></form><div class="admin-activity-table-wrap admin-leave-wfh-report-wrap"><table class="admin-activity-table admin-leave-wfh-report-table"><thead><tr><th>Date</th><th>Emp name</th><th>Emp ID</th><th>Type</th><th>Status</th><th>Reason</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="6">No Leave or WFH records found for the selected filters.</td></tr>`}</tbody></table></div><div class="report-total-footer"><span>Total output as per filter</span><strong>${rows.length} ${rows.length === 1 ? "record" : "records"}</strong></div><p class="helper">If no filter is selected, all active WFH and leave records for all employees are shown.</p></div>`;
+  return `<div class="card admin-leave-wfh-report-card"><div class="section-header"><div><p class="eyebrow">Report</p><h2>Leave and WFH report</h2></div><span class="pill">${rows.length} records</span></div><form id="adminLeaveWfhReportFilterForm" class="admin-leave-wfh-report-filters"><div class="field"><label for="adminLeaveWfhReportEmployee">Employee</label><select id="adminLeaveWfhReportEmployee">${employeeOptions}</select></div><div class="field"><label for="adminLeaveWfhReportDateMode">Dates</label><select id="adminLeaveWfhReportDateMode"><option value="all" ${dateMode === "all" ? "selected" : ""}>All time</option><option value="month" ${dateMode === "month" ? "selected" : ""}>Month wise</option><option value="year" ${dateMode === "year" ? "selected" : ""}>Year wise</option><option value="custom" ${dateMode === "custom" ? "selected" : ""}>Custom dates</option></select></div><div class="field"><label for="adminLeaveWfhReportMonth">Month</label><input id="adminLeaveWfhReportMonth" type="month" value="${escapeHtml(monthValue)}" ${monthDisabled} /></div><div class="field"><label for="adminLeaveWfhReportYear">Year</label><select id="adminLeaveWfhReportYear" ${yearDisabled}>${yearOptions}</select></div><div class="field"><label for="adminLeaveWfhReportFrom">From</label><input id="adminLeaveWfhReportFrom" type="date" value="${escapeHtml(fromValue)}" ${customDisabled} /></div><div class="field"><label for="adminLeaveWfhReportTo">To</label><input id="adminLeaveWfhReportTo" type="date" value="${escapeHtml(toValue)}" ${customDisabled} /></div><div class="field"><label for="adminLeaveWfhReportType">Type</label><select id="adminLeaveWfhReportType"><option value="" ${typeValue ? "" : "selected"}>All types</option><option value="wfh" ${typeValue === "wfh" ? "selected" : ""}>Work From Home</option><option value="privilege" ${typeValue === "privilege" ? "selected" : ""}>Privilege Leave</option><option value="sick" ${typeValue === "sick" ? "selected" : ""}>Sick Leave</option></select></div><div class="field report-employee-search-field"><label for="adminLeaveWfhReportSearch">Search</label><input id="adminLeaveWfhReportSearch" value="${escapeHtml(searchValue)}" placeholder="Name or ID" autocomplete="off" /></div><div class="actions admin-leave-wfh-report-actions"><button class="primary-btn" type="submit">Go</button><button class="secondary-btn" type="button" id="resetAdminLeaveWfhReportFiltersBtn">Reset</button></div></form><div class="admin-activity-table-wrap admin-leave-wfh-report-wrap"><table class="admin-activity-table admin-leave-wfh-report-table"><thead><tr><th>Date</th><th>Emp name</th><th>Emp ID</th><th>Type</th><th>Status</th><th>Reason</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="6">No Leave or WFH records found for the selected filters.</td></tr>`}</tbody></table></div><div class="report-total-footer"><span>${escapeHtml(getAdminLeaveWfhReportFilterLabel())} | ${employeeValue ? "Selected employee" : "All employees"}</span><strong>${rows.length} ${rows.length === 1 ? "record" : "records"}</strong></div><p class="helper">Choose All employees with All time to view every active WFH and leave record.</p></div>`;
 }
 function renderAdminLeaveWfhCalendar(activeEmployees) {
   const monthValue = getAdminLeaveWfhCalendarMonth();
@@ -2750,30 +2806,18 @@ function bindAdminEvents() {
     });
   });
 
-  const bindAdminLeaveWfhReportSuggestionButtons = () => {
-    app.querySelectorAll("[data-admin-leave-wfh-report-employee]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const value = button.dataset.adminLeaveWfhReportEmployee || "";
-        const input = app.querySelector("#adminLeaveWfhReportSearch");
-        if (input) input.value = value;
-        const suggestionsBox = app.querySelector("#adminLeaveWfhReportSuggestions");
-        if (suggestionsBox) suggestionsBox.classList.add("hidden");
-      });
-    });
-  };
-  app.querySelector("#adminLeaveWfhReportSearch")?.addEventListener("input", (event) => {
-    const suggestionsBox = app.querySelector("#adminLeaveWfhReportSuggestions");
-    if (!suggestionsBox) return;
-    const html = renderAdminLeaveWfhReportEmployeeSuggestionButtons(event.target.value || "");
-    suggestionsBox.innerHTML = html;
-    suggestionsBox.classList.toggle("hidden", !html);
-    bindAdminLeaveWfhReportSuggestionButtons();
+  app.querySelector("#adminLeaveWfhReportDateMode")?.addEventListener("change", (event) => {
+    setState({ adminLeaveWfhReportDateMode: event.target.value || "all", activeSection: "leave_wfh" });
   });
-  bindAdminLeaveWfhReportSuggestionButtons();
+
   app.querySelector("#adminLeaveWfhReportFilterForm")?.addEventListener("submit", (event) => {
     event.preventDefault();
     setState({
       adminLeaveWfhReportSearch: app.querySelector("#adminLeaveWfhReportSearch")?.value.trim() || "",
+      adminLeaveWfhReportEmployeeId: app.querySelector("#adminLeaveWfhReportEmployee")?.value || "",
+      adminLeaveWfhReportDateMode: app.querySelector("#adminLeaveWfhReportDateMode")?.value || "all",
+      adminLeaveWfhReportMonth: app.querySelector("#adminLeaveWfhReportMonth")?.value || new Date().toISOString().slice(0, 7),
+      adminLeaveWfhReportYear: app.querySelector("#adminLeaveWfhReportYear")?.value || String(new Date().getFullYear()),
       adminLeaveWfhReportFrom: fromDateInputValue(app.querySelector("#adminLeaveWfhReportFrom")?.value || ""),
       adminLeaveWfhReportTo: fromDateInputValue(app.querySelector("#adminLeaveWfhReportTo")?.value || ""),
       adminLeaveWfhReportType: app.querySelector("#adminLeaveWfhReportType")?.value || "",
@@ -2781,7 +2825,17 @@ function bindAdminEvents() {
     });
   });
   app.querySelector("#resetAdminLeaveWfhReportFiltersBtn")?.addEventListener("click", () => {
-    setState({ adminLeaveWfhReportSearch: "", adminLeaveWfhReportFrom: "", adminLeaveWfhReportTo: "", adminLeaveWfhReportType: "", activeSection: "leave_wfh" });
+    setState({
+      adminLeaveWfhReportSearch: "",
+      adminLeaveWfhReportEmployeeId: "",
+      adminLeaveWfhReportDateMode: "all",
+      adminLeaveWfhReportMonth: new Date().toISOString().slice(0, 7),
+      adminLeaveWfhReportYear: String(new Date().getFullYear()),
+      adminLeaveWfhReportFrom: "",
+      adminLeaveWfhReportTo: "",
+      adminLeaveWfhReportType: "",
+      activeSection: "leave_wfh"
+    });
   });
   app.querySelectorAll("[data-admin-leave-wfh-employee]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -4033,6 +4087,12 @@ seedDataBtn.addEventListener("click", () => {
 });
 
 render();
+
+
+
+
+
+
 
 
 
