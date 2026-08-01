@@ -269,9 +269,9 @@ function isAdminNavPendingTracked(section) { return ["overview", "employees", "e
 function navButton(section, label) {
   const pendingCount = section === "overview" ? ["employees", "employee_grouping", "leave_wfh", "holiday", "attendance_adjustment", "activity_tracker", "hiring"].reduce((total, item) => total + getAdminNavPendingCount(item), 0) : getAdminNavPendingCount(section);
   const badgeLabel = `${pendingCount} pending ${pendingCount === 1 ? "task" : "tasks"}`;
-  const badgeTone = pendingCount > 0 ? "" : " is-zero";
-  const badge = isAdminNavPendingTracked(section) ? `<span class="nav-pending-badge${badgeTone}" aria-label="${escapeHtml(badgeLabel)}">${pendingCount > 99 ? "99+" : pendingCount}</span>` : "";
-  return `<button class="nav-btn ${state.activeSection === section ? "active" : ""}" data-section="${section}" type="button"><span class="nav-btn-label">${escapeHtml(label)}</span>${badge}</button>`;
+  const badge = isAdminNavPendingTracked(section) && pendingCount > 0 ? `<span class="nav-pending-badge" aria-label="${escapeHtml(badgeLabel)}">${pendingCount > 99 ? "99+" : pendingCount}</span>` : "";
+  const pendingClass = badge ? " has-pending" : "";
+  return `<button class="nav-btn${pendingClass} ${state.activeSection === section ? "active" : ""}" data-section="${section}" type="button"><span class="nav-btn-label">${escapeHtml(label)}</span>${badge}</button>`;
 }
 function externalNavButton(label, href) { return `<a class="nav-btn external-nav-btn" href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`; }
 function formatDate(value) { if (!value) return "-"; return normalizeActivityDateValue(value) || value; }
