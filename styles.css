@@ -377,6 +377,12 @@ h1 {
   box-shadow: 0 6px 14px rgba(37, 99, 235, 0.18);
 }
 
+.nav-pending-badge.is-zero {
+  background: #dbe5f6;
+  color: #607089;
+  box-shadow: 0 6px 14px rgba(96, 112, 137, 0.12);
+}
+
 .external-nav-btn {
   display: flex;
   text-decoration: none;
@@ -3765,4 +3771,5 @@ button:disabled {
   color: var(--muted);
   font-size: 0.86rem;
 }
+
 
