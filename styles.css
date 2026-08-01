@@ -347,15 +347,47 @@ h1 {
   border-radius: 16px;
   background: #f8faff;
   color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nav-btn-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-pending-badge {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 800;
+  border: 2px solid #ffffff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
 }
 
 .external-nav-btn {
-  display: block;
+  display: flex;
   text-decoration: none;
 }
 
 .nav-btn.active {
   background: rgba(37, 99, 235, 0.1);
+  color: var(--accent);
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+.nav-btn.active .nav-pending-badge {
+  background: #ffffff;
   color: var(--accent);
   border-color: rgba(37, 99, 235, 0.18);
 }
@@ -3737,5 +3769,3 @@ button:disabled {
   color: var(--muted);
   font-size: 0.86rem;
 }
-
-

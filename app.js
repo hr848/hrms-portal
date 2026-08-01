@@ -243,7 +243,26 @@ function todayDdMmYyyy() { const d = new Date(); return `${String(d.getDate()).p
 function formatTime(date = new Date()) { return new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit" }).format(date); }
 function escapeHtml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 function emptyState(message) { return `<div class="empty-state">${escapeHtml(message)}</div>`; }
-function navButton(section, label) { return `<button class="nav-btn ${state.activeSection === section ? "active" : ""}" data-section="${section}" type="button">${label}</button>`; }
+function isPendingStatus(item) { return String(item?.status || "pending").toLowerCase() === "pending"; }
+function getAdminNavPendingCount(section) {
+  if (section === "employees") return (state.employees || []).filter((employee) => employee.hiring?.onboardingSubmittedAt && !employee.hiring?.profileReviewed).length;
+  if (section === "employee_grouping") {
+    const groupedEmployeeIds = new Set((state.employeeGroups || []).filter((group) => group.id !== DEFAULT_ADMIN_GROUP_ID).flatMap((group) => group.members || []));
+    return (state.employees || []).filter((employee) => employee.status === "Active" && !groupedEmployeeIds.has(employee.id)).length;
+  }
+  if (section === "leave_wfh") return (state.wfhRequests || []).filter(isPendingStatus).length + (state.leaveRequests || []).filter(isPendingStatus).length;
+  if (section === "holiday") return (state.holidayRequests || []).filter(isPendingStatus).length;
+  if (section === "attendance_adjustment") return getPendingAttendanceClaims().length;
+  if (section === "activity_tracker") return (state.employees || []).reduce((total, employee) => total + (employee.activities || []).filter((row) => row.workflowStatus !== "submitted" || isActivityRowStale(row)).length, 0);
+  if (section === "hiring") return (state.employees || []).filter((employee) => employee.hiring?.offerStatus === "sent" && !employee.hiring?.offerAcceptedAt).length;
+  return 0;
+}
+function navButton(section, label) {
+  const pendingCount = getAdminNavPendingCount(section);
+  const badgeLabel = `${pendingCount} pending ${pendingCount === 1 ? "task" : "tasks"}`;
+  const badge = pendingCount > 0 ? `<span class="nav-pending-badge" aria-label="${escapeHtml(badgeLabel)}">${pendingCount > 99 ? "99+" : pendingCount}</span>` : "";
+  return `<button class="nav-btn ${state.activeSection === section ? "active" : ""}" data-section="${section}" type="button"><span class="nav-btn-label">${escapeHtml(label)}</span>${badge}</button>`;
+}
 function externalNavButton(label, href) { return `<a class="nav-btn external-nav-btn" href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`; }
 function formatDate(value) { if (!value) return "-"; return normalizeActivityDateValue(value) || value; }
 function normalizeActivityDateValue(value) {
