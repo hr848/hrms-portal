@@ -222,6 +222,25 @@ h1 {
   background: #f4f8ff;
 }
 
+.link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  padding: 0.35rem 0;
+  font-weight: 700;
+  text-align: left;
+  box-shadow: none;
+}
+
+.link-btn:hover {
+  transform: none;
+  box-shadow: none;
+  text-decoration: underline;
+}
+
+.auth-helper-btn {
+  justify-self: start;
+}
 .chip-btn {
   padding: 0.6rem 0.9rem;
 }
@@ -3770,6 +3789,7 @@ button:disabled {
   color: var(--muted);
   font-size: 0.86rem;
 }
+
 
 
 
