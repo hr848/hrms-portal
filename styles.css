@@ -323,6 +323,58 @@ h1 {
   resize: vertical;
 }
 
+.password-field-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.password-field-wrap input {
+  padding-right: 3.2rem;
+}
+
+.password-visibility-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  box-shadow: none;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.password-visibility-toggle::after {
+  content: "";
+  position: absolute;
+  width: 19px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: rotate(-35deg);
+}
+
+.password-visibility-toggle.is-visible {
+  color: var(--accent);
+}
+
+.password-visibility-toggle.is-visible::after {
+  display: none;
+}
+
+.password-visibility-toggle:hover {
+  transform: translateY(-50%);
+  box-shadow: none;
+  background: rgba(37, 99, 235, 0.08);
+}
+
 .helper {
   color: var(--muted);
   font-size: 0.88rem;
@@ -3789,6 +3841,7 @@ button:disabled {
   color: var(--muted);
   font-size: 0.86rem;
 }
+
 
 
 

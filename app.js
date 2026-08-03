@@ -1356,6 +1356,30 @@ function openNotificationDialog() {
   });
 }
 
+function enhancePasswordFields(root = document) {
+  root.querySelectorAll('input[type="password"]:not([data-password-toggle-attached])').forEach((input) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "password-field-wrap";
+    input.parentNode?.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+    input.dataset.passwordToggleAttached = "true";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "password-visibility-toggle";
+    button.setAttribute("aria-label", "Show password");
+    button.title = "Show password";
+    button.innerHTML = `<span aria-hidden="true">&#128065;</span>`;
+    button.addEventListener("click", () => {
+      const visible = input.type === "password";
+      input.type = visible ? "text" : "password";
+      button.classList.toggle("is-visible", visible);
+      button.setAttribute("aria-label", visible ? "Hide password" : "Show password");
+      button.title = visible ? "Hide password" : "Show password";
+    });
+    wrapper.appendChild(button);
+  });
+}
+
 function render() {
   ensureActivityComplianceNotifications();
   const isTicketPage = isTicketStandalonePage();
@@ -1369,15 +1393,18 @@ function render() {
   if (notificationCountLabel) notificationCountLabel.textContent = String(unreadCount);
   if (isTicketPage) {
     app.innerHTML = renderTicketStandalonePage();
+    enhancePasswordFields(app);
     bindTicketEvents();
     return;
   }
   if (!state.session) {
     app.innerHTML = renderLogin();
+    enhancePasswordFields(app);
     bindLoginEvents();
     return;
   }
   app.innerHTML = state.session.role === "admin" ? renderAdminDashboard() : renderEmployeeDashboard();
+  enhancePasswordFields(app);
   bindDashboardEvents();
 }
 
