@@ -1,5 +1,6 @@
 const STORAGE_KEY = "hrms-portal-prototype-recovered-v2";
 const REMOTE_STATE_ENDPOINT = "/api/state";
+const LOCAL_SEED_STATE_ENDPOINT = "./database/production/current-hrms-browser-data.json";
 const CLIENT_ONLY_STATE_KEYS = new Set([
   "session", "selectedLogin", "ticketLoginType", "ticketSession", "ticketFilter", "ticketDraftGroupId", "ticketSection", "ticketProfileOpen",
   "activeSection", "selectedEmployeeId", "selectedLeaveWfhEmployeeId", "adminEmployeeView", "selectedHolidayGroupId",
@@ -235,6 +236,7 @@ const notificationBadge = document.querySelector("#notificationBadge");
 const notificationCountLabel = document.querySelector("#notificationCountLabel");
 let remoteStateConfigured = false;
 let remoteSaveTimer = null;
+let localSeedState = null;
 let state = loadState();
 let groupPickerOutsideClickBound = false;
 
@@ -773,7 +775,8 @@ function loadState() {
   }
 }
 function saveClientState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(getClientStateSnapshot(state)));
+  const snapshot = remoteStateConfigured ? getClientStateSnapshot(state) : state;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
 }
 function scheduleRemoteStateSave(sharedState = getSharedStateSnapshot(state), immediate = false) {
   if (!remoteStateConfigured) return;
@@ -798,8 +801,28 @@ function saveState() {
   scheduleRemoteStateSave();
 }
 function setState(patch) { state = normalizeState({ ...state, ...patch }); saveState(); render(); }
-function resetState() {
-  state = normalizeState(clone(defaultState));
+async function loadLocalSeedState() {
+  if (localSeedState) return clone(localSeedState);
+  const response = await fetch(LOCAL_SEED_STATE_ENDPOINT, { cache: "no-store" });
+  if (!response.ok) throw new Error("Unable to load local HRMS seed data.");
+  const payload = await response.json();
+  localSeedState = normalizeState({ ...clone(defaultState), ...payload });
+  return clone(localSeedState);
+}
+
+async function applyLocalSeedState() {
+  const clientState = getClientStateSnapshot(state);
+  state = normalizeState({ ...clone(defaultState), ...(await loadLocalSeedState()), ...clientState });
+  saveClientState();
+  render();
+}
+
+async function resetState() {
+  try {
+    state = normalizeState({ ...clone(defaultState), ...(await loadLocalSeedState()) });
+  } catch {
+    state = normalizeState(clone(defaultState));
+  }
   saveState();
   render();
 }
@@ -819,7 +842,12 @@ async function initializeSharedState() {
     }
     scheduleRemoteStateSave(getSharedStateSnapshot(state), true);
   } catch (error) {
-    console.warn("Shared HRMS database is not available yet. Using browser session state only.", error);
+    console.warn("Shared HRMS database is not available yet. Using local seed/browser state.", error);
+    try {
+      await applyLocalSeedState();
+    } catch (seedError) {
+      console.warn("Local HRMS seed data is not available. Using browser session state only.", seedError);
+    }
   }
 }
 function buildOfferContent(employee) {
@@ -4273,8 +4301,8 @@ function bindDashboardEvents() {
 }
 
 logoutBtn.addEventListener("click", () => setState({ session: null, activeSection: "overview", selectedLogin: "employee" }));
-seedDataBtn.addEventListener("click", () => {
-  resetState();
+seedDataBtn.addEventListener("click", async () => {
+  await resetState();
   showModalMessage("Demo data reset", "The prototype data has been restored to the recovered default state.", "success");
 });
 
