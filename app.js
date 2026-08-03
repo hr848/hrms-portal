@@ -246,24 +246,16 @@ function formatTime(date = new Date()) { return new Intl.DateTimeFormat("en-IN",
 function escapeHtml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 function emptyState(message) { return `<div class="empty-state">${escapeHtml(message)}</div>`; }
 function isPendingStatus(item) { return String(item?.status || "pending").toLowerCase() === "pending"; }
-function getUnresolvedAdminTaskNotificationCount(titles) {
-  const titleSet = new Set(titles);
-  return (state.notifications || []).filter((item) => item.recipientRole === "admin" && !item.resolved && titleSet.has(item.title)).length;
-}
 function getAdminNavPendingCount(section) {
   if (section === "employees") return (state.employees || []).filter((employee) => employee.hiring?.onboardingSubmittedAt && !employee.hiring?.profileReviewed).length;
   if (section === "employee_grouping") {
     const groupedEmployeeIds = new Set((state.employeeGroups || []).filter((group) => group.id !== DEFAULT_ADMIN_GROUP_ID).flatMap((group) => group.members || []));
     return (state.employees || []).filter((employee) => employee.status === "Active" && !groupedEmployeeIds.has(employee.id)).length;
   }
-  if (section === "leave_wfh") {
-    const pendingRequestCount = (state.wfhRequests || []).filter(isPendingStatus).length + (state.leaveRequests || []).filter(isPendingStatus).length;
-    const pendingNotificationCount = getUnresolvedAdminTaskNotificationCount(["Work From Home request raised", "Leave request raised"]);
-    return Math.max(pendingRequestCount, pendingNotificationCount);
-  }
+  if (section === "leave_wfh") return (state.wfhRequests || []).filter(isPendingStatus).length + (state.leaveRequests || []).filter(isPendingStatus).length;
   if (section === "holiday") return (state.holidayRequests || []).filter(isPendingStatus).length;
   if (section === "attendance_adjustment") return getPendingAttendanceClaims().length;
-  if (section === "activity_tracker") return (state.employees || []).reduce((total, employee) => total + (employee.activities || []).filter((row) => row.workflowStatus !== "submitted" || isActivityRowStale(row)).length, 0);
+  if (section === "activity_tracker") return 0;
   if (section === "hiring") return (state.employees || []).filter((employee) => employee.hiring?.offerStatus === "sent" && !employee.hiring?.offerAcceptedAt).length;
   return 0;
 }
