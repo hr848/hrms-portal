@@ -294,32 +294,38 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, directory=None, **kwargs):
         super().__init__(*args, directory=directory, **kwargs)
 
-    def do_POST(self):
-        if self.path != '/api/parse-employee-docx':
-            self.send_error(404, 'Not Found')
-            return
-        try:
-            length = int(self.headers.get('Content-Length', '0'))
-            payload = json.loads(self.rfile.read(length).decode('utf-8'))
-            encoded = payload.get('contentBase64', '')
-            if not encoded:
-                raise ValueError('Missing DOCX content.')
-            doc_bytes = base64.b64decode(encoded)
-            result = parse_employee_docx(doc_bytes)
-            body = json.dumps(result).encode('utf-8')
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json; charset=utf-8')
-            self.send_header('Content-Length', str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-        except Exception as exc:
-            body = json.dumps({'error': str(exc)}).encode('utf-8')
-            self.send_response(400)
-            self.send_header('Content-Type', 'application/json; charset=utf-8')
-            self.send_header('Content-Length', str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+    def send_json(self, status: int, payload: dict):
+        body = json.dumps(payload).encode('utf-8')
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
+    def read_json_payload(self) -> dict:
+        length = int(self.headers.get('Content-Length', '0'))
+        return json.loads(self.rfile.read(length).decode('utf-8'))
+
+    def do_POST(self):
+        try:
+            payload = self.read_json_payload()
+            root = Path(self.directory).resolve() if getattr(self, 'directory', None) else Path(__file__).resolve().parent
+            if self.path == '/api/parse-employee-docx':
+                encoded = payload.get('contentBase64', '')
+                if not encoded:
+                    raise ValueError('Missing DOCX content.')
+                doc_bytes = base64.b64decode(encoded)
+                self.send_json(200, parse_employee_docx(doc_bytes))
+                return
+            if self.path == '/api/feedback':
+                message = str(payload.get('message') or '').strip()
+                if not message:
+                    raise ValueError('Feedback message is required.')
+                self.send_json(200, write_feedback(payload, root))
+                return
+            self.send_error(404, 'Not Found')
+        except Exception as exc:
+            self.send_json(400, {'error': str(exc)})
 
 def main():
     parser = argparse.ArgumentParser()
