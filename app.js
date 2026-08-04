@@ -436,7 +436,7 @@ function openFeedbackDialog(event) {
         })
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || result.detail || "Feedback could not be saved.");
+      if (!response.ok) throw new Error(result.error || "Feedback could not be saved.");
       close();
       showModalMessage("Feedback saved", "Thank you. The feedback was written to the developer feedback log.", "success", true);
     } catch (error) {
@@ -1563,17 +1563,20 @@ function render() {
     app.innerHTML = renderTicketStandalonePage();
     enhancePasswordFields(app);
     bindTicketEvents();
+    renderFeedbackWidget();
     return;
   }
   if (!state.session) {
     app.innerHTML = renderLogin();
     enhancePasswordFields(app);
     bindLoginEvents();
+    renderFeedbackWidget();
     return;
   }
   app.innerHTML = state.session.role === "admin" ? renderAdminDashboard() : renderEmployeeDashboard();
   enhancePasswordFields(app);
   bindDashboardEvents();
+  renderFeedbackWidget();
 }
 
 function isTicketStandalonePage() {

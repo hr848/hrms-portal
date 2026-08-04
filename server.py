@@ -256,7 +256,7 @@ def write_feedback(payload: dict, root: Path) -> dict:
     sender = payload.get('sender') or {}
     attachments = payload.get('attachments') or []
     feedback_dir = root / 'feedback-attachments'
-    feedback_dir.mkdir(parents=True, exist_ok=True)
+    feedback_dir.mkdir(exist_ok=True)
     saved_attachments = []
     stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
     for index, item in enumerate(attachments, 1):
