@@ -296,6 +296,154 @@ function getMonthValueFromDate(value) {
   return m ? `${m[3]}-${m[2]}` : "";
 }
 function interpolateTemplate(text, values) { return String(text || "").replace(/\{\{(.*?)\}\}/g, (_, key) => values[key.trim()] ?? ""); }
+function getFeedbackSenderContext() {
+  if (state.session?.role === "admin") {
+    return { name: state.adminProfile?.name || "System Admin", role: "Admin", email: state.adminProfile?.email || "admin@hrms.local", employeeId: "" };
+  }
+  if (state.session?.role === "employee") {
+    const employee = getCurrentEmployee();
+    return { name: employee ? getEmployeeDisplayName(employee) : "Employee", role: "Employee", email: employee?.email || state.session.email || "", employeeId: employee?.id || "" };
+  }
+  if (state.ticketSession) {
+    const ticketUser = getCurrentTicketUser();
+    return { name: ticketUser?.name || state.ticketSession.name || "Raise Ticket user", role: `Raise Ticket ${state.ticketSession.role || "user"}`, email: ticketUser?.email || state.ticketSession.email || "", employeeId: ticketUser?.id || "" };
+  }
+  return { name: "Guest tester", role: "Guest", email: "", employeeId: "" };
+}
+
+function getFeedbackPageName() {
+  if (isTicketStandalonePage()) return `Raise Ticket - ${getTicketActiveSection().replace(/_/g, " ")}`;
+  if (!state.session) return "HRMS login page";
+  const section = String(state.activeSection || "overview").replace(/_/g, " ");
+  return `${state.session.role === "admin" ? "Admin" : "Employee"} - ${section}`;
+}
+
+function renderFeedbackWidget() {
+  let widget = document.querySelector("#feedbackWidget");
+  if (!widget) {
+    widget = document.createElement("div");
+    widget.id = "feedbackWidget";
+    widget.className = "feedback-widget";
+    widget.innerHTML = `<button class="feedback-trigger" id="feedbackTrigger" type="button" aria-label="Share portal feedback"><span>Feedback</span></button>`;
+    document.body.appendChild(widget);
+  }
+  const trigger = widget.querySelector("#feedbackTrigger");
+  if (trigger) trigger.onclick = openFeedbackDialog;
+}
+
+function closeFeedbackDialog() {
+  document.querySelector("#feedbackPopover")?.remove();
+}
+
+async function readFeedbackAttachments(input) {
+  const files = Array.from(input?.files || []);
+  const maxSize = 5 * 1024 * 1024;
+  if (files.some((file) => file.size > maxSize)) {
+    throw new Error("Please keep every attachment below 5 MB for this temporary feedback log.");
+  }
+  return Promise.all(files.map(async (file) => ({
+    filename: file.name,
+    contentType: file.type || "application/octet-stream",
+    contentBase64: arrayBufferToBase64(await file.arrayBuffer())
+  })));
+}
+
+function openFeedbackDialog(event) {
+  event?.stopPropagation();
+  const existing = document.querySelector("#feedbackPopover");
+  if (existing) {
+    closeFeedbackDialog();
+    return;
+  }
+  const sender = getFeedbackSenderContext();
+  const pageName = getFeedbackPageName();
+  const widget = document.querySelector("#feedbackWidget") || document.body;
+  const box = document.createElement("div");
+  box.id = "feedbackPopover";
+  box.className = "panel feedback-popover";
+  box.setAttribute("data-feedback-overlay", "true");
+  box.innerHTML = `
+    <form id="portalFeedbackForm" class="stack feedback-form">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Testing feedback</p>
+          <h2>Share feedback</h2>
+        </div>
+        <button class="icon-btn" id="feedbackCloseBtn" type="button" aria-label="Close feedback">&times;</button>
+      </div>
+      <p class="helper">This temporary box saves feedback into the project folder for developer review.</p>
+      <div class="feedback-meta">
+        <span class="pill">Sender: ${escapeHtml(sender.name)}</span>
+        <span class="pill">Page: ${escapeHtml(pageName)}</span>
+      </div>
+      <div class="field">
+        <label for="feedbackType">Feedback type</label>
+        <select id="feedbackType">
+          <option value="Bug">Bug</option>
+          <option value="Suggestion">Suggestion</option>
+          <option value="Improvement">Improvement</option>
+          <option value="Confusion">Confusion</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="feedbackMessage">Message *</label>
+        <textarea id="feedbackMessage" rows="5" placeholder="Write what should be improved, fixed, or clarified." required></textarea>
+      </div>
+      <div class="field">
+        <label for="feedbackAttachments">Attachments</label>
+        <input id="feedbackAttachments" type="file" multiple />
+        <small class="helper">Optional. Screenshots or documents up to 5 MB each. The log will show the saved file path.</small>
+      </div>
+      <div class="actions">
+        <button class="secondary-btn" id="feedbackCancelBtn" type="button">Cancel</button>
+        <button class="primary-btn" type="submit">Submit feedback</button>
+      </div>
+    </form>`;
+  widget.appendChild(box);
+
+  let outsideClickHandler;
+  const close = () => {
+    if (outsideClickHandler) document.removeEventListener("pointerdown", outsideClickHandler);
+    closeFeedbackDialog();
+  };
+  outsideClickHandler = (outsideEvent) => {
+    const trigger = document.querySelector("#feedbackTrigger");
+    if (!box.contains(outsideEvent.target) && !trigger?.contains(outsideEvent.target)) close();
+  };
+  setTimeout(() => document.addEventListener("pointerdown", outsideClickHandler), 0);
+
+  box.querySelector("#feedbackCloseBtn")?.addEventListener("click", close);
+  box.querySelector("#feedbackCancelBtn")?.addEventListener("click", close);
+  box.querySelector("#portalFeedbackForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = box.querySelector("#feedbackMessage")?.value.trim() || "";
+    if (!message) {
+      showModalMessage("Feedback message missing", "Please write your feedback before submitting.");
+      return;
+    }
+    try {
+      const attachments = await readFeedbackAttachments(box.querySelector("#feedbackAttachments"));
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender,
+          pageName,
+          feedbackType: box.querySelector("#feedbackType")?.value || "Other",
+          message,
+          attachments
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || result.detail || "Feedback could not be saved.");
+      close();
+      showModalMessage("Feedback saved", "Thank you. The feedback was written to the developer feedback log.", "success", true);
+    } catch (error) {
+      showModalMessage("Feedback save failed", error.message || "The feedback could not be written to the project folder.");
+    }
+  });
+}
 function getCurrentEmployee() { return state.session?.role === "employee" ? state.employees.find((employee) => employee.email === state.session.email) || null : null; }
 function getSelectedEmployee() { return state.employees.find((employee) => employee.id === state.selectedEmployeeId) || null; }
 function getEmployeeDisplayName(employee) {
@@ -4300,4 +4448,3 @@ seedDataBtn.addEventListener("click", async () => {
 
 render();
 initializeSharedState();
-

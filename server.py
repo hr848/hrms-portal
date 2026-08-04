@@ -1,10 +1,11 @@
-﻿import argparse
+import argparse
 import base64
 import io
 import json
 import re
 import zipfile
 from collections import OrderedDict
+from datetime import datetime
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -243,6 +244,51 @@ def parse_employee_docx(doc_bytes: bytes):
     parse_tabular_entries(main_rows, 40, 5, prev_headers, 'Previous company details', fields, labels)
     return {"fields": fields, "labels": labels}
 
+
+def safe_feedback_filename(name: str) -> str:
+    base = Path(name or 'attachment').name
+    cleaned = re.sub(r'[^a-zA-Z0-9._-]+', '_', base).strip('._')
+    return cleaned or 'attachment'
+
+
+def write_feedback(payload: dict, root: Path) -> dict:
+    created_at = datetime.now().strftime('%d-%m-%Y %I:%M:%S %p')
+    sender = payload.get('sender') or {}
+    attachments = payload.get('attachments') or []
+    feedback_dir = root / 'feedback-attachments'
+    feedback_dir.mkdir(parents=True, exist_ok=True)
+    saved_attachments = []
+    stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+    for index, item in enumerate(attachments, 1):
+        encoded = item.get('contentBase64') or ''
+        if not encoded:
+            continue
+        filename = safe_feedback_filename(item.get('filename') or f'attachment-{index}')
+        saved_name = f'{stamp}-{index}-{filename}'
+        target = feedback_dir / saved_name
+        target.write_bytes(base64.b64decode(encoded))
+        size_kb = max(1, round(target.stat().st_size / 1024))
+        content_type = item.get('contentType') or '-'
+        saved_attachments.append(f'{target} | Original: {filename} | Type: {content_type} | Size: {size_kb} KB')
+    lines = [
+        '-' * 72,
+        f'Date/Time: {created_at}',
+        f'Sender: {sender.get("name") or "Unknown"}',
+        f'Role: {sender.get("role") or "Unknown"}',
+        f'Email: {sender.get("email") or "-"}',
+        f'Employee/User ID: {sender.get("employeeId") or "-"}',
+        f'Page: {payload.get("pageName") or "-"}',
+        f'Type: {payload.get("feedbackType") or "Other"}',
+        'Message:',
+        str(payload.get('message') or '').strip(),
+        'Attachments:',
+        *(saved_attachments or ['None']),
+        ''
+    ]
+    log_path = root / 'feedback-log.txt'
+    with log_path.open('a', encoding='utf-8') as handle:
+        handle.write('\n'.join(lines))
+    return {'ok': True, 'savedAttachments': saved_attachments, 'logFile': str(log_path.name)}
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, directory=None, **kwargs):

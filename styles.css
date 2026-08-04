@@ -3841,8 +3841,123 @@ button:disabled {
   color: var(--muted);
   font-size: 0.86rem;
 }
+/* Temporary beta feedback capture */
+.feedback-widget {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 160;
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+}
 
+.feedback-trigger {
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
+  box-shadow: 0 18px 42px rgba(37, 99, 235, 0.18);
+  color: #0f3f9d;
+  cursor: pointer;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 12px 18px;
+}
 
+.feedback-trigger:hover {
+  border-color: rgba(37, 99, 235, 0.48);
+  transform: translateY(-1px);
+}
 
+.feedback-form textarea {
+  min-height: 128px;
+  resize: vertical;
+}
 
+.feedback-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 
+.feedback-form input[type="file"] {
+  border: 1px dashed rgba(37, 99, 235, 0.32);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.feedback-popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 12px);
+  width: min(460px, calc(100vw - 28px));
+  max-height: min(78vh, 680px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(245, 249, 255, 0.98));
+  box-shadow: 0 26px 70px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.72) inset;
+  animation: feedbackPopoverIn 0.16s ease-out;
+}
+
+.feedback-popover::after {
+  content: "";
+  position: absolute;
+  right: 28px;
+  bottom: -9px;
+  width: 18px;
+  height: 18px;
+  background: rgba(245, 249, 255, 0.98);
+  border-right: 1px solid rgba(37, 99, 235, 0.2);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.2);
+  transform: rotate(45deg);
+}
+
+.feedback-popover .section-header {
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.feedback-popover .icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  color: #174ea6;
+  background: #eef5ff;
+}
+
+.feedback-popover .actions {
+  justify-content: flex-end;
+}
+
+.feedback-popover .feedback-meta .pill {
+  background: linear-gradient(135deg, #eff6ff, #e9f2ff);
+}
+
+@keyframes feedbackPopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 700px) {
+  .feedback-widget {
+    right: 14px;
+    bottom: 14px;
+  }
+
+  .feedback-trigger {
+    padding: 10px 14px;
+  }
+
+  .feedback-popover {
+    right: -2px;
+    width: calc(100vw - 28px);
+    max-height: 74vh;
+  }
+}

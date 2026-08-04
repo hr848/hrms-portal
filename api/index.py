@@ -18,7 +18,7 @@ if str(ANALYTICS_BACKEND) not in sys.path:
 from app.models.schemas import AttendanceRecord  # noqa: E402
 from app.routers import analytics, upload  # noqa: E402
 from app.services.analytics_service import store  # noqa: E402
-from server import parse_employee_docx  # noqa: E402
+from server import parse_employee_docx, write_feedback  # noqa: E402
 
 ANALYTICS_STATE_BLOB = "hrms/attendance-analytics-state.json"
 APP_STATE_KEY = "default"
@@ -192,6 +192,16 @@ async def parse_employee_docx_endpoint(request: Request):
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+@app.post("/api/feedback")
+async def feedback_endpoint(request: Request):
+    try:
+        payload = await request.json()
+        message = str(payload.get("message") or "").strip() if isinstance(payload, dict) else ""
+        if not message:
+            raise ValueError("Feedback message is required.")
+        return write_feedback(payload, ROOT)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 @app.get("/api/state")
 def get_shared_state():
     try:
