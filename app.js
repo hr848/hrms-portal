@@ -250,10 +250,7 @@ function emptyState(message) { return `<div class="empty-state">${escapeHtml(mes
 function isPendingStatus(item) { return String(item?.status || "pending").toLowerCase() === "pending"; }
 function getAdminNavPendingCount(section) {
   if (section === "employees") return (state.employees || []).filter((employee) => employee.hiring?.onboardingSubmittedAt && !employee.hiring?.profileReviewed).length;
-  if (section === "employee_grouping") {
-    const groupedEmployeeIds = new Set((state.employeeGroups || []).filter((group) => group.id !== DEFAULT_ADMIN_GROUP_ID).flatMap((group) => group.members || []));
-    return (state.employees || []).filter((employee) => employee.status === "Active" && !groupedEmployeeIds.has(employee.id)).length;
-  }
+  if (section === "employee_grouping") return 0;
   if (section === "leave_wfh") return (state.wfhRequests || []).filter(isPendingStatus).length + (state.leaveRequests || []).filter(isPendingStatus).length;
   if (section === "holiday") return (state.holidayRequests || []).filter(isPendingStatus).length;
   if (section === "attendance_adjustment") return getPendingAttendanceClaims().length;
@@ -276,14 +273,16 @@ function getEmployeeNavPendingCount(section) {
     + (state.leaveRequests || []).filter((request) => request.employeeId === employee.id && isPendingStatus(request)).length;
   const pendingHoliday = (state.holidayRequests || []).filter((request) => request.employeeId === employee.id && isPendingStatus(request)).length;
   const pendingActivity = getEmployeeActivityReminderCount(employee);
-  if (section === "overview") return pendingLeaveWfh + pendingHoliday + pendingActivity;
+  const pendingGroupUpdates = getCurrentNotifications().filter((item) => item.section === "groups" && !item.columnResolved).length;
+  if (section === "overview") return pendingLeaveWfh + pendingHoliday + pendingActivity + pendingGroupUpdates;
+  if (section === "groups") return pendingGroupUpdates;
   if (section === "leave_wfh") return pendingLeaveWfh;
   if (section === "holiday") return pendingHoliday;
   if (section === "activity") return pendingActivity;
   return 0;
 }
 function isAdminNavPendingTracked(section) {
-  if (state.session?.role !== "admin") return ["overview", "leave_wfh", "holiday", "activity"].includes(section);
+  if (state.session?.role !== "admin") return ["overview", "groups", "leave_wfh", "holiday", "activity"].includes(section);
   return ["overview", "employees", "employee_grouping", "leave_wfh", "holiday", "attendance_adjustment", "activity_tracker", "hiring"].includes(section);
 }
 function navButton(section, label) {
@@ -510,7 +509,7 @@ function getGroupMemberEmployees(group) { return (group.members || []).map((id) 
 function createGroupMembershipNotification(employeeId, group, action) {
   const title = action === "added" ? "Added to employee group" : "Removed from employee group";
   const message = action === "added" ? `You were added to ${getGroupPath(group)}.` : `You were removed from ${getGroupPath(group)}.`;
-  return createNotification({ recipientRole: "employee", employeeId, title, message });
+  return { ...createNotification({ recipientRole: "employee", employeeId, title, message }), section: "groups", columnResolved: false };
 }
 function parseDdMmYyyy(value) {
   const match = normalizeActivityDateValue(value).match(/^(\d{2})-(\d{2})-(\d{4})$/);
@@ -4644,7 +4643,15 @@ function initializeAdminActivityConsole() {
 
 function bindDashboardEvents() {
   app.querySelectorAll("[data-section]").forEach((button) => {
-    button.addEventListener("click", () => setState({ activeSection: button.dataset.section }));
+    button.addEventListener("click", () => {
+      const activeSection = button.dataset.section;
+      const patch = { activeSection };
+      if (state.session?.role === "employee" && activeSection === "groups") {
+        const employee = getCurrentSessionEmployee();
+        patch.notifications = (state.notifications || []).map((item) => item.recipientRole === "employee" && item.employeeId === employee?.id && item.section === "groups" && !item.columnResolved ? { ...item, columnResolved: true } : item);
+      }
+      setState(patch);
+    });
   });
   notificationBtn?.addEventListener("click", openNotificationDialog);
   if (state.session?.role === "admin") bindAdminEvents();
