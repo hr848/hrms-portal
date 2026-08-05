@@ -1279,6 +1279,33 @@ h1 {
   min-width: 220px;
 }
 
+.activity-group-client-search {
+  padding-left: 2.35rem;
+}
+
+.activity-group-client-toggle {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  transform: translateY(-50%);
+  border: 1px solid rgba(16, 24, 40, 0.14);
+  border-radius: 6px;
+  background: #f8fbff;
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.activity-group-client-toggle:hover,
+.activity-group-client-toggle:focus-visible {
+  border-color: rgba(37, 99, 235, 0.38);
+  color: var(--primary);
+  outline: none;
+}
+
 .activity-group-client-options {
   position: absolute;
   z-index: 70;

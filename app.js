@@ -2363,7 +2363,7 @@ function renderActivityGroupClientPicker(id, value, sticky) {
   const selectedValue = options.includes(value) ? value : "";
   const displayValue = selectedValue || value || "";
   const optionRows = options.map((option) => `<button class="activity-group-client-option" type="button" data-activity-group-client-option="${escapeHtml(option)}" data-search-text="${escapeHtml(option.toLowerCase())}">${escapeHtml(option)}</button>`).join("");
-  return `<td class="${sticky}"><div class="activity-group-client-picker" data-activity-group-client-picker><input id="${id}_search" class="sheet-input" data-activity-group-client-search="${id}" value="${escapeHtml(displayValue)}" placeholder="Search Group/Client" autocomplete="off" /><input id="${id}" type="hidden" value="${escapeHtml(selectedValue)}" data-activity-group-client-value /><div class="activity-group-client-options hidden">${optionRows}</div><span class="group-search-empty hidden">No matching Group/Client found.</span></div></td>`;
+  return `<td class="${sticky}"><div class="activity-group-client-picker" data-activity-group-client-picker><button class="activity-group-client-toggle" type="button" data-activity-group-client-toggle aria-label="Show Group/Client list">&#9662;</button><input id="${id}_search" class="sheet-input activity-group-client-search" data-activity-group-client-search="${id}" value="${escapeHtml(displayValue)}" placeholder="Search Group/Client" autocomplete="off" /><input id="${id}" type="hidden" value="${escapeHtml(selectedValue)}" data-activity-group-client-value /><div class="activity-group-client-options hidden">${optionRows}</div><span class="group-search-empty hidden">No matching Group/Client found.</span></div></td>`;
 }
 function renderSelectOptions(field, selectedValue) { return [`<option value="">Select value</option>`, ...(field.options || []).map((option) => `<option value="${escapeHtml(option)}" ${option === selectedValue ? "selected" : ""}>${escapeHtml(option)}</option>`)].join(""); }
 function parseStructuredEntries(serialized, headers) {
@@ -3560,10 +3560,15 @@ function initializeActivityGroupClientPickers() {
   app.querySelectorAll("[data-activity-group-client-search]").forEach((input) => {
     const hidden = app.querySelector(`#${input.dataset.activityGroupClientSearch}`);
     const picker = input.closest("[data-activity-group-client-picker]");
+    const toggle = picker?.querySelector("[data-activity-group-client-toggle]");
     const optionsBox = picker?.querySelector(".activity-group-client-options");
     const empty = picker?.querySelector(".group-search-empty");
-    const filterOptions = () => {
-      const query = input.value.trim().toLowerCase();
+    const closeOptions = () => {
+      optionsBox?.classList.add("hidden");
+      empty?.classList.add("hidden");
+    };
+    const filterOptions = (showAll = false) => {
+      const query = showAll ? "" : input.value.trim().toLowerCase();
       let visibleCount = 0;
       let exactValue = "";
       optionsBox?.querySelectorAll("[data-activity-group-client-option]").forEach((option) => {
@@ -3571,22 +3576,35 @@ function initializeActivityGroupClientPickers() {
         const matches = !query || String(option.dataset.searchText || label).toLowerCase().includes(query);
         option.classList.toggle("hidden", !matches);
         if (matches) visibleCount += 1;
-        if (label.toLowerCase() === query) exactValue = label;
+        if (label.toLowerCase() === input.value.trim().toLowerCase()) exactValue = label;
       });
       if (hidden) hidden.value = exactValue;
       optionsBox?.classList.toggle("hidden", visibleCount === 0);
       empty?.classList.toggle("hidden", visibleCount > 0);
     };
-    input.addEventListener("focus", filterOptions);
-    input.addEventListener("input", filterOptions);
+    toggle?.addEventListener("click", () => {
+      if (!optionsBox || optionsBox.classList.contains("hidden")) {
+        filterOptions(true);
+        input.focus();
+        return;
+      }
+      closeOptions();
+    });
+    input.addEventListener("input", () => {
+      if (optionsBox && !optionsBox.classList.contains("hidden")) {
+        filterOptions(false);
+        return;
+      }
+      if (hidden) hidden.value = "";
+      empty?.classList.add("hidden");
+    });
     optionsBox?.addEventListener("click", (event) => {
       const option = event.target.closest("[data-activity-group-client-option]");
       if (!option) return;
       const value = option.dataset.activityGroupClientOption || option.textContent.trim();
       input.value = value;
       if (hidden) hidden.value = value;
-      optionsBox.classList.add("hidden");
-      empty?.classList.add("hidden");
+      closeOptions();
     });
   });
 
