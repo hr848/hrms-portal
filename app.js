@@ -261,10 +261,25 @@ function getAdminNavPendingCount(section) {
   if (section === "hiring") return (state.employees || []).filter((employee) => employee.hiring?.offerStatus === "sent" && !employee.hiring?.offerAcceptedAt).length;
   return 0;
 }
-function isAdminNavPendingTracked(section) { return ["overview", "employees", "employee_grouping", "leave_wfh", "holiday", "attendance_adjustment", "activity_tracker", "hiring"].includes(section); }
+function getEmployeeNavPendingCount(section) {
+  const openNotifications = getCurrentNotifications().filter((item) => !item.resolved);
+  if (section === "overview") return openNotifications.length;
+  const matchesSection = {
+    leave_wfh: ["leave", "work from home", "wfh"],
+    holiday: ["restricted holiday", "rh "],
+    activity: ["activity"]
+  };
+  const terms = matchesSection[section] || [];
+  return terms.length ? openNotifications.filter((item) => terms.some((term) => ((item.title || "") + " " + (item.message || "")).toLowerCase().includes(term))).length : 0;
+}
+function isAdminNavPendingTracked(section) {
+  if (state.session?.role !== "admin") return ["overview", "leave_wfh", "holiday", "activity"].includes(section);
+  return ["overview", "employees", "employee_grouping", "leave_wfh", "holiday", "attendance_adjustment", "activity_tracker", "hiring"].includes(section);
+}
 function navButton(section, label) {
-  const pendingCount = section === "overview" ? ["employees", "employee_grouping", "leave_wfh", "holiday", "attendance_adjustment", "activity_tracker", "hiring"].reduce((total, item) => total + getAdminNavPendingCount(item), 0) : getAdminNavPendingCount(section);
-  const badgeLabel = `${pendingCount} pending ${pendingCount === 1 ? "task" : "tasks"}`;
+  const adminPendingCount = section === "overview" ? ["employees", "employee_grouping", "leave_wfh", "holiday", "attendance_adjustment", "activity_tracker", "hiring"].reduce((total, item) => total + getAdminNavPendingCount(item), 0) : getAdminNavPendingCount(section);
+  const pendingCount = state.session?.role === "admin" ? adminPendingCount : getEmployeeNavPendingCount(section);
+  const badgeLabel = pendingCount + " pending " + (pendingCount === 1 ? "task" : "tasks");
   const badge = isAdminNavPendingTracked(section) && pendingCount > 0 ? `<span class="nav-pending-badge" aria-label="${escapeHtml(badgeLabel)}">${pendingCount > 99 ? "99+" : pendingCount}</span>` : "";
   const pendingClass = badge ? " has-pending" : "";
   return `<button class="nav-btn${pendingClass} ${state.activeSection === section ? "active" : ""}" data-section="${section}" type="button"><span class="nav-btn-label">${escapeHtml(label)}</span>${badge}</button>`;
@@ -1522,7 +1537,13 @@ function getNotificationTone(item) {
   return "default";
 }
 function openNotificationDialog() {
-  const notifications = getCurrentNotifications();
+  const openNotifications = getCurrentNotifications().filter((item) => !item.resolved);
+  const notificationIds = new Set(openNotifications.map((item) => item.id));
+  if (notificationIds.size) {
+    state = normalizeState({ ...state, notifications: state.notifications.map((item) => notificationIds.has(item.id) ? { ...item, resolved: true } : item) });
+    saveState();
+  }
+  const notifications = openNotifications;
   const existing = document.querySelector("[data-modal-overlay='true']");
   if (existing) existing.remove();
   const overlay = document.createElement("div");
@@ -1539,8 +1560,8 @@ function openNotificationDialog() {
   box.style.width = "min(760px, 100%)";
   box.style.maxHeight = "80vh";
   box.style.overflow = "auto";
-  const body = notifications.length ? notifications.map((item) => `<div class="notification-card notification-card--${getNotificationTone(item)}"><div class="notification-card__body"><p class="eyebrow notification-card__eyebrow">${escapeHtml(item.createdAt || "Notification")}</p><h3>${escapeHtml(item.title || "Notification")}</h3><p class="muted">${escapeHtml(item.message || "")}</p></div><label class="notification-resolve"><input type="checkbox" data-notification-resolve="${item.id}" ${item.resolved ? "checked" : ""} />Mark as resolved</label></div>`).join("") : emptyState("No notifications available.");
-  box.innerHTML = `<div class="section-header"><div><p class="eyebrow">Notifications</p><h2>${state.session?.role === "admin" ? "Admin notifications" : "Employee notifications"}</h2></div><span class="pill">${notifications.filter((item) => !item.resolved).length} open</span></div><div class="stack">${body}</div><div class="actions" style="margin-top:16px;"><button type="button" class="secondary-btn" id="notificationCloseBtn">Close</button></div>`;
+  const body = notifications.length ? notifications.map((item) => `<div class="notification-card notification-card--${getNotificationTone(item)}"><div class="notification-card__body"><p class="eyebrow notification-card__eyebrow">${escapeHtml(item.createdAt || "Notification")}</p><h3>${escapeHtml(item.title || "Notification")}</h3><p class="muted">${escapeHtml(item.message || "")}</p></div><label class="notification-resolve"><input type="checkbox" data-notification-resolve="${item.id}" checked disabled />Seen</label></div>`).join("") : emptyState("No notifications available.");
+  box.innerHTML = `<div class="section-header"><div><p class="eyebrow">Notifications</p><h2>${state.session?.role === "admin" ? "Admin notifications" : "Employee notifications"}</h2></div><span class="pill">${notifications.length} new</span></div><div class="stack">${body}</div><div class="actions" style="margin-top:16px;"><button type="button" class="secondary-btn" id="notificationCloseBtn">Close</button></div>`;
   overlay.appendChild(box);
   document.body.appendChild(overlay);
   const close = () => overlay.remove();
