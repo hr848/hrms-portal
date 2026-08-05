@@ -1307,11 +1307,10 @@ h1 {
 }
 
 .activity-group-client-options {
-  position: absolute;
-  z-index: 70;
-  top: calc(100% + 6px);
+  position: fixed;
+  z-index: 1000;
+  top: 0;
   left: 0;
-  right: 0;
   display: grid;
   gap: 4px;
   max-height: 220px;

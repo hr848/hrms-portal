@@ -3567,6 +3567,13 @@ function initializeActivityGroupClientPickers() {
       optionsBox?.classList.add("hidden");
       empty?.classList.add("hidden");
     };
+    const positionOptions = () => {
+      if (!picker || !optionsBox) return;
+      const rect = picker.getBoundingClientRect();
+      optionsBox.style.left = `${rect.left}px`;
+      optionsBox.style.top = `${rect.bottom + 6}px`;
+      optionsBox.style.width = `${Math.max(rect.width, 220)}px`;
+    };
     const filterOptions = (showAll = false) => {
       const query = showAll ? "" : input.value.trim().toLowerCase();
       let visibleCount = 0;
@@ -3581,11 +3588,12 @@ function initializeActivityGroupClientPickers() {
       if (hidden) hidden.value = exactValue;
       optionsBox?.classList.toggle("hidden", visibleCount === 0);
       empty?.classList.toggle("hidden", visibleCount > 0);
+      if (visibleCount > 0) positionOptions();
     };
     toggle?.addEventListener("click", () => {
       if (!optionsBox || optionsBox.classList.contains("hidden")) {
-        filterOptions(true);
         input.focus();
+        filterOptions(true);
         return;
       }
       closeOptions();
