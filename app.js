@@ -1012,12 +1012,14 @@ async function loadLocalSeedState() {
 
 async function applyLocalSeedState() {
   const clientState = getClientStateSnapshot(state);
+  const persistedAutoApprovalSettings = { wfhAutoApproval: state.wfhAutoApproval, leaveAutoApproval: state.leaveAutoApproval };
   const cachedGroupClientOptions = getCachedGroupClientOptions();
   const seedState = await loadLocalSeedState();
   state = normalizeState({
     ...clone(defaultState),
     ...seedState,
     ...clientState,
+    ...persistedAutoApprovalSettings,
     ...(cachedGroupClientOptions ? { activityTemplate: { ...(seedState.activityTemplate || {}), groupClientOptions: cachedGroupClientOptions } } : {})
   });
   saveClientState();
