@@ -939,6 +939,14 @@ function loadState() {
     return normalizeState(clone(defaultState));
   }
 }
+function getCachedGroupClientOptions() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    return Array.isArray(cached?.activityTemplate?.groupClientOptions) ? normalizeGroupClientOptions(cached.activityTemplate.groupClientOptions) : null;
+  } catch {
+    return null;
+  }
+}
 function saveClientState() {
   const snapshot = remoteStateConfigured
     ? { ...getClientStateSnapshot(state), activityTemplate: { groupClientOptions: getGroupClientOptions() } }
@@ -979,7 +987,14 @@ async function loadLocalSeedState() {
 
 async function applyLocalSeedState() {
   const clientState = getClientStateSnapshot(state);
-  state = normalizeState({ ...clone(defaultState), ...(await loadLocalSeedState()), ...clientState });
+  const cachedGroupClientOptions = getCachedGroupClientOptions();
+  const seedState = await loadLocalSeedState();
+  state = normalizeState({
+    ...clone(defaultState),
+    ...seedState,
+    ...clientState,
+    ...(cachedGroupClientOptions ? { activityTemplate: { ...(seedState.activityTemplate || {}), groupClientOptions: cachedGroupClientOptions } } : {})
+  });
   saveClientState();
   render();
 }
@@ -1003,8 +1018,9 @@ async function initializeSharedState() {
     if (data.state && typeof data.state === "object") {
       const clientState = getClientStateSnapshot(state);
       const remoteState = { ...data.state };
-      if (!Object.prototype.hasOwnProperty.call(remoteState.activityTemplate || {}, "groupClientOptions") && state.activityTemplate?.groupClientOptions?.length) {
-        remoteState.activityTemplate = { ...(remoteState.activityTemplate || {}), groupClientOptions: getGroupClientOptions() };
+      const cachedGroupClientOptions = getCachedGroupClientOptions();
+      if (cachedGroupClientOptions) {
+        remoteState.activityTemplate = { ...(remoteState.activityTemplate || {}), groupClientOptions: cachedGroupClientOptions };
       }
       state = normalizeState({ ...clone(defaultState), ...remoteState, ...clientState });
       saveClientState();
@@ -2792,6 +2808,7 @@ function bindAdminEvents() {
       return;
     }
     setState({ activityTemplate: { ...state.activityTemplate, groupClientOptions: normalizeGroupClientOptions([...options, name]) }, activeSection: "activity" });
+    scheduleRemoteStateSave(getSharedStateSnapshot(state), true);
     showModalMessage("Group/Client added", `${name} is now available in the employee activity log dropdown.`, "success");
   });
 
@@ -2800,6 +2817,7 @@ function bindAdminEvents() {
       const name = button.dataset.removeGroupClient || "";
       const options = getGroupClientOptions().filter((option) => option !== name);
       setState({ activityTemplate: { ...state.activityTemplate, groupClientOptions: options }, activeSection: "activity" });
+      scheduleRemoteStateSave(getSharedStateSnapshot(state), true);
       showModalMessage("Group/Client removed", `${name} was removed from the employee activity log dropdown.`, "success");
     });
   });
@@ -3563,6 +3581,9 @@ function collectOnboardingValues(prefix) {
 }
 
 function initializeActivityGroupClientPickers() {
+  document.querySelectorAll(".activity-group-client-options").forEach((box) => {
+    if (box.parentElement === document.body) box.remove();
+  });
   app.querySelectorAll("[data-activity-group-client-search]").forEach((input) => {
     const hidden = app.querySelector(`#${input.dataset.activityGroupClientSearch}`);
     const picker = input.closest("[data-activity-group-client-picker]");
@@ -3604,6 +3625,7 @@ function initializeActivityGroupClientPickers() {
     };
     toggle?.addEventListener("click", () => {
       if (!optionsBox || optionsBox.classList.contains("hidden")) {
+        if (optionsBox && optionsBox.parentElement !== document.body) document.body.appendChild(optionsBox);
         input.focus();
         filterOptions(true);
         return;
@@ -3632,10 +3654,10 @@ function initializeActivityGroupClientPickers() {
 
   if (!activityGroupClientOutsideClickBound) {
     document.addEventListener("click", (event) => {
-      if (event.target.closest("[data-activity-group-client-picker]")) return;
-      app.querySelectorAll(".activity-group-client-options").forEach((box) => box.classList.add("hidden"));
+      if (event.target.closest("[data-activity-group-client-picker]") || event.target.closest(".activity-group-client-options")) return;
+      document.querySelectorAll(".activity-group-client-options").forEach((box) => box.classList.add("hidden"));
       app.querySelectorAll(".activity-group-client-picker .group-search-empty").forEach((item) => item.classList.add("hidden"));
-      app.querySelectorAll(".activity-group-client-options").forEach((box) => {
+      document.querySelectorAll(".activity-group-client-options").forEach((box) => {
         box.style.top = "";
         box.style.left = "";
         box.style.width = "";
