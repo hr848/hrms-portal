@@ -940,7 +940,9 @@ function loadState() {
   }
 }
 function saveClientState() {
-  const snapshot = remoteStateConfigured ? getClientStateSnapshot(state) : state;
+  const snapshot = remoteStateConfigured
+    ? { ...getClientStateSnapshot(state), activityTemplate: { groupClientOptions: getGroupClientOptions() } }
+    : state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
 }
 function scheduleRemoteStateSave(sharedState = getSharedStateSnapshot(state), immediate = false) {
@@ -1000,7 +1002,11 @@ async function initializeSharedState() {
     if (!remoteStateConfigured) return;
     if (data.state && typeof data.state === "object") {
       const clientState = getClientStateSnapshot(state);
-      state = normalizeState({ ...clone(defaultState), ...data.state, ...clientState });
+      const remoteState = { ...data.state };
+      if (!Object.prototype.hasOwnProperty.call(remoteState.activityTemplate || {}, "groupClientOptions") && state.activityTemplate?.groupClientOptions?.length) {
+        remoteState.activityTemplate = { ...(remoteState.activityTemplate || {}), groupClientOptions: getGroupClientOptions() };
+      }
+      state = normalizeState({ ...clone(defaultState), ...remoteState, ...clientState });
       saveClientState();
       render();
       return;
@@ -3563,11 +3569,21 @@ function initializeActivityGroupClientPickers() {
     const toggle = picker?.querySelector("[data-activity-group-client-toggle]");
     const optionsBox = picker?.querySelector(".activity-group-client-options");
     const empty = picker?.querySelector(".group-search-empty");
-    const tableWrap = picker?.closest(".admin-activity-table-wrap");
     const closeOptions = () => {
       optionsBox?.classList.add("hidden");
       empty?.classList.add("hidden");
-      tableWrap?.classList.remove("activity-client-dropdown-open");
+      if (optionsBox) {
+        optionsBox.style.top = "";
+        optionsBox.style.left = "";
+        optionsBox.style.width = "";
+      }
+    };
+    const positionOptions = () => {
+      if (!optionsBox || optionsBox.classList.contains("hidden")) return;
+      const inputRect = input.getBoundingClientRect();
+      optionsBox.style.top = (inputRect.bottom + 6) + "px";
+      optionsBox.style.left = inputRect.left + "px";
+      optionsBox.style.width = Math.max(inputRect.width, 220) + "px";
     };
     const filterOptions = (showAll = false) => {
       const query = showAll ? "" : input.value.trim().toLowerCase();
@@ -3583,7 +3599,8 @@ function initializeActivityGroupClientPickers() {
       if (hidden) hidden.value = exactValue;
       optionsBox?.classList.toggle("hidden", visibleCount === 0);
       empty?.classList.toggle("hidden", visibleCount > 0);
-      tableWrap?.classList.toggle("activity-client-dropdown-open", visibleCount > 0);
+      if (visibleCount > 0) positionOptions();
+      else closeOptions();
     };
     toggle?.addEventListener("click", () => {
       if (!optionsBox || optionsBox.classList.contains("hidden")) {
@@ -3601,6 +3618,8 @@ function initializeActivityGroupClientPickers() {
       if (hidden) hidden.value = "";
       empty?.classList.add("hidden");
     });
+    window.addEventListener("resize", positionOptions);
+    window.addEventListener("scroll", positionOptions, true);
     optionsBox?.addEventListener("click", (event) => {
       const option = event.target.closest("[data-activity-group-client-option]");
       if (!option) return;
@@ -3616,7 +3635,11 @@ function initializeActivityGroupClientPickers() {
       if (event.target.closest("[data-activity-group-client-picker]")) return;
       app.querySelectorAll(".activity-group-client-options").forEach((box) => box.classList.add("hidden"));
       app.querySelectorAll(".activity-group-client-picker .group-search-empty").forEach((item) => item.classList.add("hidden"));
-      app.querySelectorAll(".admin-activity-table-wrap.activity-client-dropdown-open").forEach((wrap) => wrap.classList.remove("activity-client-dropdown-open"));
+      app.querySelectorAll(".activity-group-client-options").forEach((box) => {
+        box.style.top = "";
+        box.style.left = "";
+        box.style.width = "";
+      });
     });
     activityGroupClientOutsideClickBound = true;
   }
