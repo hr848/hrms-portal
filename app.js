@@ -839,7 +839,7 @@ function normalizeState(input) {
   normalized.onboardingTemplate = { ...clone(defaultState.onboardingTemplate), ...(input.onboardingTemplate || {}) };
   normalized.onboardingTemplate.fields = mergeTemplateFields(defaultOnboardingFields, normalized.onboardingTemplate.fields);
   normalized.activityTemplate = { ...clone(defaultState.activityTemplate), ...(input.activityTemplate || {}) };
-  normalized.activityTemplate.fields = mergeTemplateFields(defaultActivityFields, normalized.activityTemplate.fields);
+  normalized.activityTemplate.fields = mergeTemplateFields(defaultActivityFields, normalized.activityTemplate.fields).map((field) => field.key === "group_client" ? { ...field, type: "groupClient", required: true } : field);
   normalized.employees = (normalized.employees || []).map((employee) => ({
     ...employee,
     profile: { phone: "", designation: "", location: "", bio: "", ...(employee.profile || {}) },
