@@ -1307,10 +1307,11 @@ h1 {
 }
 
 .activity-group-client-options {
-  position: fixed;
+  position: absolute;
   z-index: 1000;
-  top: 0;
+  top: calc(100% + 6px);
   left: 0;
+  right: 0;
   display: grid;
   gap: 4px;
   max-height: 220px;
@@ -1356,6 +1357,10 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 20px;
   background: #ffffff;
+}
+
+.admin-activity-table-wrap.activity-client-dropdown-open {
+  padding-bottom: 240px;
 }
 
 .admin-activity-table {

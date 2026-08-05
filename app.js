@@ -3563,16 +3563,11 @@ function initializeActivityGroupClientPickers() {
     const toggle = picker?.querySelector("[data-activity-group-client-toggle]");
     const optionsBox = picker?.querySelector(".activity-group-client-options");
     const empty = picker?.querySelector(".group-search-empty");
+    const tableWrap = picker?.closest(".admin-activity-table-wrap");
     const closeOptions = () => {
       optionsBox?.classList.add("hidden");
       empty?.classList.add("hidden");
-    };
-    const positionOptions = () => {
-      if (!picker || !optionsBox) return;
-      const rect = picker.getBoundingClientRect();
-      optionsBox.style.left = `${rect.left}px`;
-      optionsBox.style.top = `${rect.bottom + 6}px`;
-      optionsBox.style.width = `${Math.max(rect.width, 220)}px`;
+      tableWrap?.classList.remove("activity-client-dropdown-open");
     };
     const filterOptions = (showAll = false) => {
       const query = showAll ? "" : input.value.trim().toLowerCase();
@@ -3588,7 +3583,7 @@ function initializeActivityGroupClientPickers() {
       if (hidden) hidden.value = exactValue;
       optionsBox?.classList.toggle("hidden", visibleCount === 0);
       empty?.classList.toggle("hidden", visibleCount > 0);
-      if (visibleCount > 0) positionOptions();
+      tableWrap?.classList.toggle("activity-client-dropdown-open", visibleCount > 0);
     };
     toggle?.addEventListener("click", () => {
       if (!optionsBox || optionsBox.classList.contains("hidden")) {
@@ -3621,6 +3616,7 @@ function initializeActivityGroupClientPickers() {
       if (event.target.closest("[data-activity-group-client-picker]")) return;
       app.querySelectorAll(".activity-group-client-options").forEach((box) => box.classList.add("hidden"));
       app.querySelectorAll(".activity-group-client-picker .group-search-empty").forEach((item) => item.classList.add("hidden"));
+      app.querySelectorAll(".admin-activity-table-wrap.activity-client-dropdown-open").forEach((wrap) => wrap.classList.remove("activity-client-dropdown-open"));
     });
     activityGroupClientOutsideClickBound = true;
   }
