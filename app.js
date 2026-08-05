@@ -114,7 +114,7 @@ const defaultActivityFields = [
   { key: "sl_no", label: "SL No.", type: "text", required: false, readOnly: true },
   { key: "date", label: "Date", type: "date", required: true },
   { key: "module", label: "Module", type: "text", required: true },
-  { key: "group_client", label: "Group/Client", type: "text", required: true },
+  { key: "group_client", label: "Group/Client", type: "groupClient", required: true },
   { key: "ticket_number", label: "Ticket Number", type: "text", required: true },
   { key: "issue_raised_by", label: "Issue Raised by", type: "text", required: true },
   { key: "medium", label: "Medium", type: "text", required: true },
@@ -176,7 +176,8 @@ const defaultState = {
   activityTemplate: {
     title: "Activity Log",
     instructions: "Fill the activity sheet row by row. Draft rows can be saved and updated later, while submitted rows lock automatically.",
-    fields: defaultActivityFields
+    fields: defaultActivityFields,
+    groupClientOptions: ["Core HRMS"]
   },
   wfhPolicy: { weeklyLimit: 1, monthlyLimit: 2, requestWindowMonths: 6, locked: false },
   wfhPolicyHistory: [],
@@ -239,6 +240,7 @@ let remoteSaveTimer = null;
 let localSeedState = null;
 let state = loadState();
 let groupPickerOutsideClickBound = false;
+let activityGroupClientOutsideClickBound = false;
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 function todayDdMmYyyy() { const d = new Date(); return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`; }
@@ -777,6 +779,27 @@ function getAttendanceMonthlyReport(monthValue) {
   return { range, fullMonthRange, employees, rows, totalPresent: rows.reduce((sum, row) => sum + row.presentCount, 0), totalAbsent: rows.reduce((sum, row) => sum + row.absentCount, 0), totalWorkFromHome: rows.reduce((sum, row) => sum + row.workFromHomeCount, 0), totalHoliday: rows.reduce((sum, row) => sum + row.holidayCount, 0), workingDays: getWorkingDaysInRange(range.from, range.to) };
 }
 
+function normalizeGroupClientOptions(options) {
+  const values = [];
+  (Array.isArray(options) ? options : []).forEach((option) => {
+    const value = String(option || "").trim();
+    if (value) values.push(value);
+  });
+  return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+}
+function deriveGroupClientOptionsFromActivities(employees = []) {
+  const values = [...(defaultState.activityTemplate.groupClientOptions || [])];
+  (employees || []).forEach((employee) => {
+    (employee.activities || []).forEach((row) => {
+      const value = String(row.values?.group_client || "").trim();
+      if (value) values.push(value);
+    });
+  });
+  return normalizeGroupClientOptions(values);
+}
+function getGroupClientOptions() {
+  return normalizeGroupClientOptions(state.activityTemplate?.groupClientOptions || []);
+}
 function normalizeActivityValues(values, fields = defaultActivityFields) {
   const out = {};
   for (const field of fields) {
@@ -828,6 +851,8 @@ function normalizeState(input) {
     credentials: { password: employee.credentials?.password || TEMP_PASSWORD },
     hiring: { offerStatus: "not_sent", offerSentAt: "", offerAcceptedAt: "", onboardingSubmittedAt: "", profileEditAllowed: false, profileReviewed: false, offerDraftSubject: "", offerDraftBody: "", ...(employee.hiring || {}) }
   }));
+  const savedGroupClientOptions = input.activityTemplate && Array.isArray(input.activityTemplate.groupClientOptions) ? input.activityTemplate.groupClientOptions : null;
+  normalized.activityTemplate.groupClientOptions = savedGroupClientOptions ? normalizeGroupClientOptions(savedGroupClientOptions) : deriveGroupClientOptionsFromActivities(normalized.employees);
   normalized.employeeGroups = normalizeEmployeeGroups(normalized.employeeGroups, normalized.employees);
   normalized.attendancePolicy = { officeName: "Office", latitude: "", longitude: "", radiusMeters: 15, checkInTime: "", checkInGraceMinutes: "", checkOutTime: "", checkOutGraceMinutes: "", timingRuleEnabled: true, locked: false, ...(normalized.attendancePolicy || {}) };
   normalized.attendancePolicyHistory = normalized.attendancePolicyHistory || [];
@@ -1769,6 +1794,11 @@ function renderAdminDashboard() {
   const totalActivities = state.employees.reduce((sum, item) => sum + item.activities.length, 0);
   return `<section class="dashboard"><aside class="panel sidebar"><p class="eyebrow">Admin console</p><h2>${escapeHtml(state.adminProfile.name)}</h2><p class="muted">${escapeHtml(state.adminProfile.email)}</p><nav>${navButton("overview", "Overview")}${navButton("employees", "Employees")}${navButton("employee_grouping", "Employee grouping")}${navButton("attendance", "Attendance")}${externalNavButton("Attendance analytics", "/attendance-analytics/index.html")}${navButton("leave_wfh", "Leave and WFH")}${navButton("holiday", "Holiday")}${navButton("attendance_adjustment", "Attendance adjustment")}${navButton("activity", "Activity template")}${navButton("activity_tracker", "Activity tracker")}${navButton("hiring", "Hiring setup")}${navButton("settings", "Settings")}</nav></aside><div class="content">${renderAdminSection(activeEmployees, totalAttendance, totalActivities)}</div></section>`;
 }
+function renderAdminActivityTemplateSection() {
+  const groupClientOptions = getGroupClientOptions();
+  const groupClientRows = groupClientOptions.map((option) => `<div class="list-item"><div><strong>${escapeHtml(option)}</strong><span class="muted">Available in employee activity log dropdown</span></div><button class="secondary-btn" type="button" data-remove-group-client="${escapeHtml(option)}">Remove</button></div>`).join("");
+  return `<div class="split"><div class="card"><div class="section-header"><div><p class="eyebrow">Template</p><h2>Activity sheet format</h2></div><span class="pill success">${state.activityTemplate.fields.length} columns</span></div><div class="list">${state.activityTemplate.fields.map((field) => `<div class="list-item"><div><strong>${escapeHtml(field.label)}</strong><span class="muted">${escapeHtml(field.type === "groupClient" ? "search dropdown" : field.type)}${field.required ? " - required" : ""}</span></div><span class="pill">${escapeHtml(field.key)}</span></div>`).join("")}</div></div><div class="card"><div class="section-header"><div><p class="eyebrow">Group/Client</p><h2>Manage dropdown values</h2></div><span class="pill">${groupClientOptions.length} options</span></div><form id="groupClientOptionForm" class="stack"><div class="field"><label for="groupClientOptionName">Group/Client name</label><input id="groupClientOptionName" placeholder="Add group/client name" autocomplete="off" /></div><button class="secondary-btn" type="submit">Add group/client</button></form><div class="list" style="margin-top:14px;">${groupClientRows || emptyState("No group/client names configured yet.")}</div></div><div class="card"><div class="section-header"><div><p class="eyebrow">Reminder readiness</p><h2>Draft vs submitted rows</h2></div><span class="pill warning">Rule-ready</span></div><div class="stack"><div class="empty-state">Draft rows remain editable after Save.</div><div class="empty-state">Submitted rows lock automatically for that specific serial number.</div><div class="empty-state">Admin-managed Group/Client values appear as a searchable employee dropdown.</div></div></div></div>`;
+}
 function renderAdminSection(activeEmployees, totalAttendance, totalActivities) {
   const selected = getSelectedEmployee();
   const offersPending = state.employees.filter((item) => item.hiring.offerStatus === "sent").length;
@@ -1782,7 +1812,7 @@ function renderAdminSection(activeEmployees, totalAttendance, totalActivities) {
   if (state.activeSection === "leave_wfh") return renderAdminLeaveWfhConsole();
   if (state.activeSection === "holiday") return renderAdminHolidayConsole();
   if (state.activeSection === "attendance_adjustment") return renderAdminAttendanceAdjustmentConsole();
-  if (state.activeSection === "activity") return `<div class="split"><div class="card"><div class="section-header"><div><p class="eyebrow">Template</p><h2>Activity sheet format</h2></div><span class="pill success">${state.activityTemplate.fields.length} columns</span></div><div class="list">${state.activityTemplate.fields.map((field) => `<div class="list-item"><div><strong>${escapeHtml(field.label)}</strong><span class="muted">${escapeHtml(field.type)}${field.required ? " - required" : ""}</span></div><span class="pill">${escapeHtml(field.key)}</span></div>`).join("")}</div></div><div class="card"><div class="section-header"><div><p class="eyebrow">Reminder readiness</p><h2>Draft vs submitted rows</h2></div><span class="pill warning">Rule-ready</span></div><div class="stack"><div class="empty-state">Draft rows remain editable after Save.</div><div class="empty-state">Submitted rows lock automatically for that specific serial number.</div><div class="empty-state">Admin-managed dropdown values can be extended later.</div></div></div></div>`;
+  if (state.activeSection === "activity") return renderAdminActivityTemplateSection();
   if (state.activeSection === "activity_tracker") return renderAdminActivityConsole();
   return `<div class="split"><div class="stack"><div class="card"><div class="section-header"><div><p class="eyebrow">Email config</p><h2>Configure sender email</h2></div><span class="pill ${state.emailConfig.configured ? "success" : "warning"}">${state.emailConfig.configured ? "Configured" : "Needs app password"}</span></div><form id="emailConfigForm" class="stack"><div class="grid-2"><div class="field"><label for="senderName">Sender name</label><input id="senderName" value="${escapeHtml(state.emailConfig.senderName)}" required /></div><div class="field"><label for="senderEmail">Sender email</label><input id="senderEmail" type="email" value="${escapeHtml(state.emailConfig.senderEmail)}" required /></div></div><div class="grid-2"><div class="field"><label for="smtpHost">SMTP host</label><input id="smtpHost" value="${escapeHtml(state.emailConfig.smtpHost)}" required /></div><div class="field"><label for="smtpPort">SMTP port</label><input id="smtpPort" value="${escapeHtml(state.emailConfig.smtpPort)}" required /></div></div><div class="field"><label for="appPassword">App password</label><input id="appPassword" type="password" value="${escapeHtml(state.emailConfig.appPassword)}" required /></div><button class="primary-btn" type="submit">Save email configuration</button></form></div><div class="card"><div class="section-header"><div><p class="eyebrow">Account security</p><h2>Admin password</h2></div><span class="pill warning">Email reset pending</span></div><form id="adminPasswordChangeForm" class="stack"><div class="field"><label for="adminCurrentPasswordChange">Current password</label><input id="adminCurrentPasswordChange" type="password" required /></div><div class="grid-2"><div class="field"><label for="adminNewPasswordChange">New password</label><input id="adminNewPasswordChange" type="password" minlength="6" required /></div><div class="field"><label for="adminConfirmPasswordChange">Confirm new password</label><input id="adminConfirmPasswordChange" type="password" minlength="6" required /></div></div><button class="secondary-btn" type="submit">Change admin password</button><p class="helper">Forgot-password reset links will be enabled after email integration. This form changes the admin password only while logged in.</p></form></div><div class="card"><div class="section-header"><div><p class="eyebrow">Offer template</p><h2>Predefined email content</h2></div><span class="pill">Editable template</span></div><form id="offerTemplateForm" class="stack"><div class="field"><label for="offerSubject">Email subject</label><input id="offerSubject" value="${escapeHtml(state.offerTemplate.subject)}" required /></div><div class="field"><label for="offerBody">Email body</label><textarea id="offerBody" required>${escapeHtml(state.offerTemplate.body)}</textarea></div><button class="primary-btn" type="submit">Save offer template</button></form></div></div><div class="card tall"><div class="section-header"><div><p class="eyebrow">Recent offer emails</p><h2>Dispatch preview</h2></div><span class="pill">${state.recentEmails.length} sent</span></div><div class="list">${state.recentEmails.map(renderEmailLogRow).join("") || emptyState("No offer emails sent yet.")}</div></div></div>`;
 }
@@ -2321,11 +2351,19 @@ function renderEmployeeActivityCell(field, row, editable) {
   const value = field.key === "sl_no" ? row.slNo : row.values[field.key] || "";
   if (!editable || field.readOnly || field.key === "sl_no") return `<td class="${sticky}">${escapeHtml(value || "-")}</td>`;
   const id = `activity_${row.rowId}_${field.key}`;
+  if (field.type === "groupClient") return renderActivityGroupClientPicker(id, value, sticky);
   if (field.type === "textarea") return `<td class="${sticky}"><textarea id="${id}" class="sheet-input sheet-area">${escapeHtml(value)}</textarea></td>`;
   if (field.type === "select") return `<td class="${sticky}"><select id="${id}" class="sheet-input">${renderSelectOptions(field, value)}</select></td>`;
   const type = field.type === "number" ? "number" : "text";
   const placeholder = field.type === "date" ? ' placeholder="dd-mm-yyyy"' : "";
   return `<td class="${sticky}"><input id="${id}" class="sheet-input" type="${type}" value="${escapeHtml(value)}"${placeholder} /></td>`;
+}
+function renderActivityGroupClientPicker(id, value, sticky) {
+  const options = getGroupClientOptions();
+  const selectedValue = options.includes(value) ? value : "";
+  const displayValue = selectedValue || value || "";
+  const optionRows = options.map((option) => `<button class="activity-group-client-option" type="button" data-activity-group-client-option="${escapeHtml(option)}" data-search-text="${escapeHtml(option.toLowerCase())}">${escapeHtml(option)}</button>`).join("");
+  return `<td class="${sticky}"><div class="activity-group-client-picker" data-activity-group-client-picker><input id="${id}_search" class="sheet-input" data-activity-group-client-search="${id}" value="${escapeHtml(displayValue)}" placeholder="Search Group/Client" autocomplete="off" /><input id="${id}" type="hidden" value="${escapeHtml(selectedValue)}" data-activity-group-client-value /><div class="activity-group-client-options hidden">${optionRows}</div><span class="group-search-empty hidden">No matching Group/Client found.</span></div></td>`;
 }
 function renderSelectOptions(field, selectedValue) { return [`<option value="">Select value</option>`, ...(field.options || []).map((option) => `<option value="${escapeHtml(option)}" ${option === selectedValue ? "selected" : ""}>${escapeHtml(option)}</option>`)].join(""); }
 function parseStructuredEntries(serialized, headers) {
@@ -2735,6 +2773,30 @@ function bindAdminEvents() {
   });
 
   app.querySelector("#addEmployeeOnlyBtn")?.addEventListener("click", () => createEmployeeFromForm(false));
+  app.querySelector("#groupClientOptionForm")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = app.querySelector("#groupClientOptionName")?.value.trim() || "";
+    if (!name) {
+      showModalMessage("Group/Client missing", "Please enter a Group/Client name before adding it.");
+      return;
+    }
+    const options = getGroupClientOptions();
+    if (options.some((option) => option.toLowerCase() === name.toLowerCase())) {
+      showModalMessage("Group/Client already exists", `${name} is already available in the employee activity dropdown.`);
+      return;
+    }
+    setState({ activityTemplate: { ...state.activityTemplate, groupClientOptions: normalizeGroupClientOptions([...options, name]) }, activeSection: "activity" });
+    showModalMessage("Group/Client added", `${name} is now available in the employee activity log dropdown.`, "success");
+  });
+
+  app.querySelectorAll("[data-remove-group-client]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const name = button.dataset.removeGroupClient || "";
+      const options = getGroupClientOptions().filter((option) => option !== name);
+      setState({ activityTemplate: { ...state.activityTemplate, groupClientOptions: options }, activeSection: "activity" });
+      showModalMessage("Group/Client removed", `${name} was removed from the employee activity log dropdown.`, "success");
+    });
+  });
 
   app.querySelectorAll("[data-employee-action]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -3494,9 +3556,53 @@ function collectOnboardingValues(prefix) {
   return details;
 }
 
+function initializeActivityGroupClientPickers() {
+  app.querySelectorAll("[data-activity-group-client-search]").forEach((input) => {
+    const hidden = app.querySelector(`#${input.dataset.activityGroupClientSearch}`);
+    const picker = input.closest("[data-activity-group-client-picker]");
+    const optionsBox = picker?.querySelector(".activity-group-client-options");
+    const empty = picker?.querySelector(".group-search-empty");
+    const filterOptions = () => {
+      const query = input.value.trim().toLowerCase();
+      let visibleCount = 0;
+      let exactValue = "";
+      optionsBox?.querySelectorAll("[data-activity-group-client-option]").forEach((option) => {
+        const label = option.dataset.activityGroupClientOption || option.textContent.trim();
+        const matches = !query || String(option.dataset.searchText || label).toLowerCase().includes(query);
+        option.classList.toggle("hidden", !matches);
+        if (matches) visibleCount += 1;
+        if (label.toLowerCase() === query) exactValue = label;
+      });
+      if (hidden) hidden.value = exactValue;
+      optionsBox?.classList.toggle("hidden", visibleCount === 0);
+      empty?.classList.toggle("hidden", visibleCount > 0);
+    };
+    input.addEventListener("focus", filterOptions);
+    input.addEventListener("input", filterOptions);
+    optionsBox?.addEventListener("click", (event) => {
+      const option = event.target.closest("[data-activity-group-client-option]");
+      if (!option) return;
+      const value = option.dataset.activityGroupClientOption || option.textContent.trim();
+      input.value = value;
+      if (hidden) hidden.value = value;
+      optionsBox.classList.add("hidden");
+      empty?.classList.add("hidden");
+    });
+  });
+
+  if (!activityGroupClientOutsideClickBound) {
+    document.addEventListener("click", (event) => {
+      if (event.target.closest("[data-activity-group-client-picker]")) return;
+      app.querySelectorAll(".activity-group-client-options").forEach((box) => box.classList.add("hidden"));
+      app.querySelectorAll(".activity-group-client-picker .group-search-empty").forEach((item) => item.classList.add("hidden"));
+    });
+    activityGroupClientOutsideClickBound = true;
+  }
+}
 function bindEmployeeEvents() {
   const employee = getCurrentEmployee();
   if (!employee) return;
+  initializeActivityGroupClientPickers();
 
   app.querySelector("#acceptOfferBtn")?.addEventListener("click", () => {
     setState({
@@ -4225,9 +4331,15 @@ async function captureLocationForEmployee(employee, type) {
 
 function collectActivityRowValues(rowId) {
   const values = {};
+  const groupClientOptions = getGroupClientOptions();
   for (const field of state.activityTemplate.fields) {
     if (field.key === "sl_no") continue;
     const element = app.querySelector(`#activity_${rowId}_${field.key}`);
+    if (field.type === "groupClient") {
+      const selectedValue = element?.value.trim() || "";
+      values[field.key] = groupClientOptions.includes(selectedValue) ? selectedValue : "";
+      continue;
+    }
     values[field.key] = field.type === "date" ? normalizeActivityDateValue(element?.value.trim() || "") : (element?.value.trim() || "");
   }
   return values;
