@@ -3633,12 +3633,13 @@ function initializeActivityGroupClientPickers() {
       closeOptions();
     });
     input.addEventListener("input", () => {
-      if (optionsBox && !optionsBox.classList.contains("hidden")) {
+      if (input.value.trim() && optionsBox && optionsBox.parentElement !== document.body) document.body.appendChild(optionsBox);
+      if (input.value.trim()) {
         filterOptions(false);
         return;
       }
       if (hidden) hidden.value = "";
-      empty?.classList.add("hidden");
+      closeOptions();
     });
     window.addEventListener("resize", positionOptions);
     window.addEventListener("scroll", positionOptions, true);
