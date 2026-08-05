@@ -2060,6 +2060,7 @@ function setLeaveWfhAutoApproval(kind, enabled) {
     const updatedRequests = enabled ? (state.wfhRequests || []).map((request) => String(request.status || "pending").toLowerCase() === "pending" ? { ...request, status: "accepted", reviewedAt: timestamp, reviewedBy: `${state.adminProfile.name} (auto approval)` } : request) : (state.wfhRequests || []);
     const notifications = enabled ? pending.map((request) => createNotification({ recipientRole: "employee", employeeId: request.employeeId, title: "Work From Home request accepted", message: `Your Work From Home request for ${request.date} was auto-approved by admin.` })) : [];
     setState({ wfhAutoApproval: enabled, wfhRequests: updatedRequests, notifications: [...notifications, ...(state.notifications || [])], activeSection: "leave_wfh" });
+    scheduleRemoteStateSave(getSharedStateSnapshot(state), true);
     showModalMessage("WFH auto approval updated", enabled ? "WFH auto approval is enabled. Pending WFH requests have been accepted and future WFH requests will be accepted automatically." : "WFH auto approval is disabled. Future WFH requests will need admin review.", "success");
     return;
   }
@@ -2067,6 +2068,7 @@ function setLeaveWfhAutoApproval(kind, enabled) {
   const updatedRequests = enabled ? (state.leaveRequests || []).map((request) => String(request.status || "pending").toLowerCase() === "pending" ? { ...request, status: "accepted", reviewedAt: timestamp, reviewedBy: `${state.adminProfile.name} (auto approval)` } : request) : (state.leaveRequests || []);
   const notifications = enabled ? pending.map((request) => createNotification({ recipientRole: "employee", employeeId: request.employeeId, title: "Leave request accepted", message: `Your ${getLeaveTypeConfig(request.type).label} request for ${request.date} was auto-approved by admin.` })) : [];
   setState({ leaveAutoApproval: enabled, leaveRequests: updatedRequests, notifications: [...notifications, ...(state.notifications || [])], activeSection: "leave_wfh" });
+  scheduleRemoteStateSave(getSharedStateSnapshot(state), true);
   showModalMessage("Leave auto approval updated", enabled ? "Leave auto approval is enabled. Pending leave requests have been accepted and future leave requests will be accepted automatically." : "Leave auto approval is disabled. Future leave requests will need admin review.", "success");
 }
 function renderAdminLeaveWfhConsole() {
