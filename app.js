@@ -261,16 +261,26 @@ function getAdminNavPendingCount(section) {
   if (section === "hiring") return (state.employees || []).filter((employee) => employee.hiring?.offerStatus === "sent" && !employee.hiring?.offerAcceptedAt).length;
   return 0;
 }
+function getEmployeeActivityReminderCount(employee) {
+  if (!employee) return 0;
+  const parsedToday = parseDdMmYyyy(todayDdMmYyyy());
+  if (!parsedToday || parsedToday.getDay() < 5) return 0;
+  const weekRange = getWeekRangeForDate(todayDdMmYyyy());
+  const weeklyRows = getEmployeeActivityRowsInRange(employee, weekRange.from, weekRange.to);
+  return weeklyRows.some((row) => row.savedAt || row.submittedAt || row.workflowStatus === "submitted") ? 0 : 1;
+}
 function getEmployeeNavPendingCount(section) {
-  const openNotifications = getCurrentNotifications().filter((item) => !item.resolved);
-  if (section === "overview") return openNotifications.length;
-  const matchesSection = {
-    leave_wfh: ["leave", "work from home", "wfh"],
-    holiday: ["restricted holiday", "rh "],
-    activity: ["activity"]
-  };
-  const terms = matchesSection[section] || [];
-  return terms.length ? openNotifications.filter((item) => terms.some((term) => ((item.title || "") + " " + (item.message || "")).toLowerCase().includes(term))).length : 0;
+  const employee = getCurrentSessionEmployee();
+  if (!employee) return 0;
+  const pendingLeaveWfh = (state.wfhRequests || []).filter((request) => request.employeeId === employee.id && isPendingStatus(request)).length
+    + (state.leaveRequests || []).filter((request) => request.employeeId === employee.id && isPendingStatus(request)).length;
+  const pendingHoliday = (state.holidayRequests || []).filter((request) => request.employeeId === employee.id && isPendingStatus(request)).length;
+  const pendingActivity = getEmployeeActivityReminderCount(employee);
+  if (section === "overview") return pendingLeaveWfh + pendingHoliday + pendingActivity;
+  if (section === "leave_wfh") return pendingLeaveWfh;
+  if (section === "holiday") return pendingHoliday;
+  if (section === "activity") return pendingActivity;
+  return 0;
 }
 function isAdminNavPendingTracked(section) {
   if (state.session?.role !== "admin") return ["overview", "leave_wfh", "holiday", "activity"].includes(section);
@@ -1537,13 +1547,7 @@ function getNotificationTone(item) {
   return "default";
 }
 function openNotificationDialog() {
-  const openNotifications = getCurrentNotifications().filter((item) => !item.resolved);
-  const notificationIds = new Set(openNotifications.map((item) => item.id));
-  if (notificationIds.size) {
-    state = normalizeState({ ...state, notifications: state.notifications.map((item) => notificationIds.has(item.id) ? { ...item, resolved: true } : item) });
-    saveState();
-  }
-  const notifications = openNotifications;
+  const notifications = getCurrentNotifications().filter((item) => !item.resolved);
   const existing = document.querySelector("[data-modal-overlay='true']");
   if (existing) existing.remove();
   const overlay = document.createElement("div");
@@ -1560,8 +1564,8 @@ function openNotificationDialog() {
   box.style.width = "min(760px, 100%)";
   box.style.maxHeight = "80vh";
   box.style.overflow = "auto";
-  const body = notifications.length ? notifications.map((item) => `<div class="notification-card notification-card--${getNotificationTone(item)}"><div class="notification-card__body"><p class="eyebrow notification-card__eyebrow">${escapeHtml(item.createdAt || "Notification")}</p><h3>${escapeHtml(item.title || "Notification")}</h3><p class="muted">${escapeHtml(item.message || "")}</p></div><label class="notification-resolve"><input type="checkbox" data-notification-resolve="${item.id}" checked disabled />Seen</label></div>`).join("") : emptyState("No notifications available.");
-  box.innerHTML = `<div class="section-header"><div><p class="eyebrow">Notifications</p><h2>${state.session?.role === "admin" ? "Admin notifications" : "Employee notifications"}</h2></div><span class="pill">${notifications.length} new</span></div><div class="stack">${body}</div><div class="actions" style="margin-top:16px;"><button type="button" class="secondary-btn" id="notificationCloseBtn">Close</button></div>`;
+  const body = notifications.length ? notifications.map((item) => `<div class="notification-card notification-card--${getNotificationTone(item)}"><div class="notification-card__body"><p class="eyebrow notification-card__eyebrow">${escapeHtml(item.createdAt || "Notification")}</p><h3>${escapeHtml(item.title || "Notification")}</h3><p class="muted">${escapeHtml(item.message || "")}</p></div><label class="notification-resolve"><input type="checkbox" data-notification-resolve="${item.id}" />Viewed</label></div>`).join("") : emptyState("No notifications available.");
+  box.innerHTML = `<div class="section-header"><div><p class="eyebrow">Notifications</p><h2>${state.session?.role === "admin" ? "Admin notifications" : "Employee notifications"}</h2></div><span class="pill">${notifications.length} unseen</span></div><div class="stack">${body}</div><div class="actions" style="margin-top:16px;"><button type="button" class="secondary-btn" id="notificationCloseBtn">Close</button></div>`;
   overlay.appendChild(box);
   document.body.appendChild(overlay);
   const close = () => overlay.remove();
