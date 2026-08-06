@@ -274,7 +274,7 @@ function getEmployeeNavPendingCount(section) {
   const pendingHoliday = (state.holidayRequests || []).filter((request) => request.employeeId === employee.id && isPendingStatus(request)).length;
   const pendingActivity = getEmployeeActivityReminderCount(employee);
   const pendingGroupUpdates = getCurrentNotifications().filter((item) => item.section === "groups" && !item.columnResolved).length;
-  if (section === "overview") return pendingLeaveWfh + pendingHoliday + pendingActivity + pendingGroupUpdates;
+  if (section === "overview") return 0;
   if (section === "groups") return pendingGroupUpdates;
   if (section === "leave_wfh") return pendingLeaveWfh;
   if (section === "holiday") return pendingHoliday;
@@ -282,8 +282,8 @@ function getEmployeeNavPendingCount(section) {
   return 0;
 }
 function isAdminNavPendingTracked(section) {
-  if (state.session?.role !== "admin") return ["overview", "groups", "leave_wfh", "holiday", "activity"].includes(section);
-  return ["overview", "employees", "employee_grouping", "leave_wfh", "holiday", "attendance_adjustment", "activity_tracker", "hiring"].includes(section);
+  if (state.session?.role !== "admin") return ["groups", "leave_wfh", "holiday", "activity"].includes(section);
+  return ["employees", "employee_grouping", "leave_wfh", "holiday", "attendance_adjustment", "activity_tracker", "hiring"].includes(section);
 }
 function navButton(section, label) {
   const adminPendingCount = section === "overview" ? ["employees", "employee_grouping", "leave_wfh", "holiday", "attendance_adjustment", "activity_tracker", "hiring"].reduce((total, item) => total + getAdminNavPendingCount(item), 0) : getAdminNavPendingCount(section);
@@ -1012,6 +1012,7 @@ async function loadLocalSeedState() {
 async function applyLocalSeedState() {
   const clientState = getClientStateSnapshot(state);
   const persistedAutoApprovalSettings = { wfhAutoApproval: state.wfhAutoApproval, leaveAutoApproval: state.leaveAutoApproval };
+  const persistedNotifications = state.notifications;
   const cachedGroupClientOptions = getCachedGroupClientOptions();
   const seedState = await loadLocalSeedState();
   state = normalizeState({
@@ -1019,6 +1020,7 @@ async function applyLocalSeedState() {
     ...seedState,
     ...clientState,
     ...persistedAutoApprovalSettings,
+    notifications: persistedNotifications,
     ...(cachedGroupClientOptions ? { activityTemplate: { ...(seedState.activityTemplate || {}), groupClientOptions: cachedGroupClientOptions } } : {})
   });
   saveClientState();
@@ -1581,6 +1583,7 @@ function openNotificationDialog() {
         notifications: state.notifications.map((item) => item.id === notificationId ? { ...item, resolved: checkbox.checked } : item)
       });
       saveState();
+      scheduleRemoteStateSave(getSharedStateSnapshot(state), true);
       const openCount = getUnreadNotificationCount();
       const openPill = box.querySelector(".section-header .pill");
       if (openPill) openPill.textContent = `${openCount} open`;
