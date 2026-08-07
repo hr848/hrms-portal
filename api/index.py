@@ -23,7 +23,6 @@ from server import parse_employee_docx, write_feedback  # noqa: E402
 
 ANALYTICS_STATE_BLOB = "hrms/attendance-analytics-state.json"
 APP_STATE_KEY = "default"
-SEED_STATE_PATH = ROOT / "database" / "production" / "current-hrms-browser-data.json"
 
 
 def _database_url() -> str:
@@ -75,14 +74,6 @@ def _read_shared_state():
             row = cursor.fetchone()
             payload = row["payload"] if row else None
             return json.loads(payload) if isinstance(payload, str) else payload
-
-
-def _read_seed_state():
-    if not SEED_STATE_PATH.exists():
-        return None
-    with SEED_STATE_PATH.open("r", encoding="utf-8") as seed_file:
-        payload = json.load(seed_file)
-    return payload if isinstance(payload, dict) else None
 
 
 def _write_shared_state(payload: dict) -> None:
@@ -223,11 +214,7 @@ async def feedback_endpoint(request: Request):
 def get_shared_state():
     try:
         payload = _read_shared_state()
-        if payload is None:
-            payload = _read_seed_state()
-            if payload is not None:
-                _write_shared_state(payload)
-        return {"configured": True, "state": payload}
+        return {"configured": True, "source": "mysql", "state": payload}
     except RuntimeError as exc:
         return {"configured": False, "state": None, "message": str(exc)}
     except Exception as exc:

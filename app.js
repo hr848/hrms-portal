@@ -1027,6 +1027,16 @@ async function applyLocalSeedState() {
   render();
 }
 
+function createEmptySharedState() {
+  const emptyState = clone(defaultState);
+  [
+    "employees", "employeeGroups", "leaveRequests", "holidayRequests", "recentEmails",
+    "ticketTickets", "ticketUsers", "ticketGroups", "notifications"
+  ].forEach((key) => { emptyState[key] = []; });
+  emptyState.activityTemplate = { ...emptyState.activityTemplate, groupClientOptions: [] };
+  return emptyState;
+}
+
 async function resetState() {
   try {
     state = normalizeState({ ...clone(defaultState), ...(await loadLocalSeedState()) });
@@ -1046,23 +1056,20 @@ async function initializeSharedState() {
     if (data.state && typeof data.state === "object") {
       const clientState = getClientStateSnapshot(state);
       const remoteState = { ...data.state };
-      const cachedGroupClientOptions = getCachedGroupClientOptions();
-      if (cachedGroupClientOptions) {
-        remoteState.activityTemplate = { ...(remoteState.activityTemplate || {}), groupClientOptions: cachedGroupClientOptions };
-      }
       state = normalizeState({ ...clone(defaultState), ...remoteState, ...clientState });
       saveClientState();
       render();
       return;
     }
-    scheduleRemoteStateSave(getSharedStateSnapshot(state), true);
+    state = normalizeState({ ...createEmptySharedState(), ...getClientStateSnapshot(state) });
+    saveClientState();
+    render();
   } catch (error) {
-    console.warn("Shared HRMS database is not available yet. Using local seed/browser state.", error);
-    try {
-      await applyLocalSeedState();
-    } catch (seedError) {
-      console.warn("Local HRMS seed data is not available. Using browser session state only.", seedError);
-    }
+    remoteStateConfigured = true;
+    state = normalizeState({ ...createEmptySharedState(), ...getClientStateSnapshot(state) });
+    saveClientState();
+    render();
+    console.warn("Shared HRMS MySQL database is not available. The portal did not load local JSON data.", error);
   }
 }
 function buildOfferContent(employee) {
