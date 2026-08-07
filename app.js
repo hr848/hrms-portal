@@ -1,5 +1,10 @@
 const STORAGE_KEY = "hrms-portal-prototype-recovered-v2";
-const REMOTE_STATE_ENDPOINT = "/api/state";
+const LOCAL_API_BASE = ["localhost", "127.0.0.1"].includes(window.location.hostname) && window.location.port === "4173"
+  ? "http://127.0.0.1:8000"
+  : "";
+const REMOTE_STATE_ENDPOINT = `${LOCAL_API_BASE}/api/state`;
+const FEEDBACK_ENDPOINT = `${LOCAL_API_BASE}/api/feedback`;
+const DOCX_PARSE_ENDPOINT = `${LOCAL_API_BASE}/api/parse-employee-docx`;
 const LOCAL_SEED_STATE_ENDPOINT = "./database/production/current-hrms-browser-data.json";
 const CLIENT_ONLY_STATE_KEYS = new Set([
   "session", "selectedLogin", "ticketLoginType", "ticketSession", "ticketFilter", "ticketDraftGroupId", "ticketSection", "ticketProfileOpen",
@@ -450,7 +455,7 @@ function openFeedbackDialog(event) {
     }
     try {
       const attachments = await readFeedbackAttachments(box.querySelector("#feedbackAttachments"));
-      const response = await fetch("/api/feedback", {
+      const response = await fetch(FEEDBACK_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1112,7 +1117,7 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 async function parseEmployeeDocx(file) {
-  const response = await fetch("/api/parse-employee-docx", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename: file.name, contentBase64: arrayBufferToBase64(await file.arrayBuffer()) }) });
+  const response = await fetch(DOCX_PARSE_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename: file.name, contentBase64: arrayBufferToBase64(await file.arrayBuffer()) }) });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || "The DOCX file could not be parsed.");
   return data;
