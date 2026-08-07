@@ -437,6 +437,15 @@ CREATE TABLE app_state_snapshots (
   state_json JSON NOT NULL
 );
 
+-- Compatibility table used by the current portal API. The complete shared
+-- state is stored here so existing frontend behavior is preserved while the
+-- application is migrated to normalized tables in a later phase.
+CREATE TABLE hrms_portal_state (
+  app_key VARCHAR(255) NOT NULL PRIMARY KEY,
+  payload JSON NOT NULL,
+  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+);
+
 CREATE INDEX idx_employees_email ON employees(email);
 CREATE INDEX idx_attendance_records_employee_date ON attendance_records(employee_id, attendance_date);
 CREATE INDEX idx_activity_logs_employee_date ON activity_logs(employee_id, activity_date);

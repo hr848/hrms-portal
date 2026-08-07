@@ -3,6 +3,7 @@ import inspect
 import json
 import os
 import sys
+from urllib.parse import parse_qs, unquote, urlparse
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -26,16 +27,30 @@ SEED_STATE_PATH = ROOT / "database" / "production" / "current-hrms-browser-data.
 
 
 def _database_url() -> str:
-    return os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL") or ""
+    return os.environ.get("MYSQL_URL") or os.environ.get("DATABASE_URL") or ""
 
 
 def _open_db():
     database_url = _database_url()
     if not database_url:
-        raise RuntimeError("DATABASE_URL is not configured. Connect a Postgres database in Vercel first.")
-    import psycopg
+        raise RuntimeError("MYSQL_URL or DATABASE_URL is not configured. Add the Plesk MySQL connection details.")
+    import pymysql
 
-    return psycopg.connect(database_url)
+    parsed = urlparse(database_url)
+    if parsed.scheme not in {"mysql", "mysql+pymysql"}:
+        raise RuntimeError("The database connection must use a mysql:// URL.")
+    query = parse_qs(parsed.query)
+    return pymysql.connect(
+        host=parsed.hostname or "127.0.0.1",
+        port=parsed.port or 3306,
+        user=unquote(parsed.username or ""),
+        password=unquote(parsed.password or ""),
+        database=(parsed.path or "").lstrip("/"),
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=False,
+        connect_timeout=int(query.get("connect_timeout", [10])[0]),
+    )
 
 
 def _ensure_state_table(connection) -> None:
@@ -43,9 +58,9 @@ def _ensure_state_table(connection) -> None:
         cursor.execute(
             """
             create table if not exists hrms_portal_state (
-                app_key text primary key,
-                payload jsonb not null,
-                updated_at timestamptz not null default now()
+                app_key varchar(255) primary key,
+                payload json not null,
+                updated_at datetime(6) not null default current_timestamp(6)
             )
             """
         )
@@ -58,7 +73,8 @@ def _read_shared_state():
         with connection.cursor() as cursor:
             cursor.execute("select payload from hrms_portal_state where app_key = %s", (APP_STATE_KEY,))
             row = cursor.fetchone()
-            return row[0] if row else None
+            payload = row["payload"] if row else None
+            return json.loads(payload) if isinstance(payload, str) else payload
 
 
 def _read_seed_state():
@@ -76,9 +92,10 @@ def _write_shared_state(payload: dict) -> None:
             cursor.execute(
                 """
                 insert into hrms_portal_state (app_key, payload, updated_at)
-                values (%s, %s::jsonb, now())
-                on conflict (app_key)
-                do update set payload = excluded.payload, updated_at = now()
+                values (%s, %s, current_timestamp(6))
+                on duplicate key update
+                    payload = values(payload),
+                    updated_at = current_timestamp(6)
                 """,
                 (APP_STATE_KEY, json.dumps(payload)),
             )
