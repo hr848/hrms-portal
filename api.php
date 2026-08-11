@@ -9,6 +9,12 @@ header('Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
+set_exception_handler(function($e) {
+    http_response_code(500);
+    echo json_encode(["error" => "PHP Crash", "message" => $e->getMessage(), "file" => $e->getFile(), "line" => $e->getLine()]);
+    exit;
+});
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
