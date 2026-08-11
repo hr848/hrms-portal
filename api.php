@@ -50,8 +50,8 @@ function handleState() {
     
     $pdo->exec("CREATE TABLE IF NOT EXISTS hrms_portal_state (
         app_key VARCHAR(255) PRIMARY KEY,
-        payload JSON NOT NULL,
-        updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+        payload LONGTEXT NOT NULL,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )");
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -76,10 +76,10 @@ function handleState() {
         $payload_json = json_encode($input['state']);
         $stmt = $pdo->prepare("
             INSERT INTO hrms_portal_state (app_key, payload, updated_at) 
-            VALUES ('default', :payload, CURRENT_TIMESTAMP(6))
+            VALUES ('default', :payload, CURRENT_TIMESTAMP)
             ON DUPLICATE KEY UPDATE 
                 payload = VALUES(payload), 
-                updated_at = CURRENT_TIMESTAMP(6)
+                updated_at = CURRENT_TIMESTAMP
         ");
         $stmt->execute(['payload' => $payload_json]);
         echo json_encode(["ok" => true]);
