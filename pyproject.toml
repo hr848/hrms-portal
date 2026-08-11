@@ -1,7 +1,7 @@
 [project]
 name = "hrms-portal"
 version = "1.0.0"
-description = "HRMS portal prototype with Vercel-compatible API functions"
+description = "HRMS portal with a Plesk-compatible MySQL API"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi==0.115.6",
@@ -11,7 +11,6 @@ dependencies = [
   "xlrd==2.0.1",
   "numpy==2.2.1",
   "reportlab==4.2.5",
-  "vercel>=0.5.0",
   "pymysql>=1.1.1"
 ]
 

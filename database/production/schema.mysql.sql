@@ -446,6 +446,12 @@ CREATE TABLE hrms_portal_state (
   updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
 );
 
+CREATE TABLE hrms_analytics_state (
+  app_key VARCHAR(190) NOT NULL PRIMARY KEY,
+  payload LONGTEXT NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX idx_employees_email ON employees(email);
 CREATE INDEX idx_attendance_records_employee_date ON attendance_records(employee_id, attendance_date);
 CREATE INDEX idx_activity_logs_employee_date ON activity_logs(employee_id, activity_date);

@@ -1,5 +1,4 @@
 import base64
-import inspect
 import json
 import os
 import sys
@@ -21,8 +20,8 @@ from app.routers import analytics, upload  # noqa: E402
 from app.services.analytics_service import store  # noqa: E402
 from server import parse_employee_docx, write_feedback  # noqa: E402
 
-ANALYTICS_STATE_BLOB = "hrms/attendance-analytics-state.json"
 APP_STATE_KEY = "default"
+ANALYTICS_STATE_KEY = "default"
 
 
 def _database_url() -> str:
@@ -102,72 +101,62 @@ app.add_middleware(
 )
 
 
-def _blob_state_payload() -> bytes:
-    return json.dumps({
-        "records": [record.model_dump(mode="json") for record in store.records],
-        "warnings": store.warnings,
-    }).encode("utf-8")
-
-
-async def _maybe_await(value):
-    return await value if inspect.isawaitable(value) else value
-
-
-async def _read_blob_bytes(result) -> bytes:
-    if result is None:
-        return b""
-    for attr in ("body", "content", "data"):
-        value = getattr(result, attr, None)
-        if value:
-            value = await _maybe_await(value)
-            return value.encode("utf-8") if isinstance(value, str) else bytes(value)
-    stream = getattr(result, "stream", None)
-    if stream is None:
-        return b""
-    if hasattr(stream, "read"):
-        value = await _maybe_await(stream.read())
-        return value.encode("utf-8") if isinstance(value, str) else bytes(value)
-    chunks = []
-    async for chunk in stream:
-        chunks.append(chunk.encode("utf-8") if isinstance(chunk, str) else chunk)
-    return b"".join(chunks)
+def _ensure_analytics_state_table(connection) -> None:
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            create table if not exists hrms_analytics_state (
+                app_key varchar(190) primary key,
+                payload longtext not null,
+                updated_at timestamp not null default current_timestamp
+            )
+            """
+        )
+    connection.commit()
 
 
 async def _persist_analytics_state() -> None:
     if not store.records:
         return
     try:
-        from vercel.blob import AsyncBlobClient
-
-        client = AsyncBlobClient()
-        await client.put(
-            ANALYTICS_STATE_BLOB,
-            _blob_state_payload(),
-            access="private",
-            content_type="application/json",
-            add_random_suffix=False,
-            overwrite=True,
-        )
+        payload = {
+            "records": [record.model_dump(mode="json") for record in store.records],
+            "warnings": store.warnings,
+        }
+        with _open_db() as connection:
+            _ensure_analytics_state_table(connection)
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    insert into hrms_analytics_state (app_key, payload, updated_at)
+                    values (%s, %s, current_timestamp)
+                    on duplicate key update
+                        payload = values(payload),
+                        updated_at = current_timestamp
+                    """,
+                    (ANALYTICS_STATE_KEY, json.dumps(payload)),
+                )
+            connection.commit()
     except Exception as exc:
-        print(f"Analytics Blob persistence skipped: {exc}")
+        print(f"Analytics MySQL persistence skipped: {exc}")
 
 
 async def _load_analytics_state() -> None:
     if store.records:
         return
     try:
-        from vercel.blob import AsyncBlobClient
-
-        client = AsyncBlobClient()
-        result = await client.get(ANALYTICS_STATE_BLOB, access="private")
-        raw = await _read_blob_bytes(result)
-        if not raw:
+        with _open_db() as connection:
+            _ensure_analytics_state_table(connection)
+            with connection.cursor() as cursor:
+                cursor.execute("select payload from hrms_analytics_state where app_key = %s", (ANALYTICS_STATE_KEY,))
+                row = cursor.fetchone()
+        if not row:
             return
-        payload = json.loads(raw.decode("utf-8"))
+        payload = row["payload"] if isinstance(row["payload"], dict) else json.loads(row["payload"])
         store.records = [AttendanceRecord(**record) for record in payload.get("records", [])]
         store.warnings = payload.get("warnings", [])
     except Exception as exc:
-        print(f"Analytics Blob restore skipped: {exc}")
+        print(f"Analytics MySQL restore skipped: {exc}")
 
 
 @app.middleware("http")
