@@ -1969,7 +1969,7 @@ function renderAdminOnboardingInfoRows(employee) {
   return `<div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Personal details</p><h3>Personal details</h3></div></div><div class="stack">${personalRows || emptyState("No personal details saved yet.")}<div class="section-header profile-subsection"><div><p class="eyebrow">Address</p><h3>Present address</h3></div></div>${presentRows || emptyState("No present address saved yet.")}<div class="section-header profile-subsection"><div><p class="eyebrow">Address</p><h3>Permanent address</h3></div></div>${permanentRows || emptyState("No permanent address saved yet.")}</div></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Bank details</p><h3>Bank details</h3></div></div><div class="stack">${bankRows || emptyState("No bank details saved yet.")}</div></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Employment</p><h3>Employment details</h3></div></div><div class="stack">${employmentRows || emptyState("No employment details saved yet.")}</div></div>`;
 }
 function renderAdminAttachmentReviewSection(employee) {
-  return `<div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Attachments</p><h3>Uploaded employee documents</h3></div><span class="pill">${PROFILE_ATTACHMENT_REQUIREMENTS.length} items</span></div><div class="admin-activity-table-wrap"><table class="admin-activity-table profile-attachment-table"><thead><tr><th>Required document</th><th>Current file</th></tr></thead><tbody>${PROFILE_ATTACHMENT_REQUIREMENTS.map((item) => { const current = employee.attachments?.[item.key]; return `<tr><td>${escapeHtml(item.label)}</td><td>${current ? `<span class="pill success">${escapeHtml(current.fileName)}</span><div class="muted">${escapeHtml(current.uploadedAt || "")}</div>` : `<span class="muted">Not uploaded</span>`}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+  return `<div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Attachments</p><h3>Uploaded employee documents</h3></div><span class="pill">${PROFILE_ATTACHMENT_REQUIREMENTS.length} items</span></div><div class="admin-activity-table-wrap"><table class="admin-activity-table profile-attachment-table"><thead><tr><th>Required document</th><th>Current file</th></tr></thead><tbody>${PROFILE_ATTACHMENT_REQUIREMENTS.map((item) => { const current = employee.attachments?.[item.key]; return `<tr><td>${escapeHtml(item.label)}</td><td>${current ? `<span class="pill success">${escapeHtml(current.fileName)}</span><div class="muted">${escapeHtml(current.uploadedAt || "")}</div>${current.savedFileId ? `<button type="button" class="link-btn" style="padding:4px 0;" onclick="downloadSecureAttachment('${escapeHtml(current.savedFileId)}', '${escapeHtml(current.fileName)}')">Download securely</button>` : ''}` : `<span class="muted">Not uploaded</span>`}</td></tr>`; }).join("")}</tbody></table></div></div>`;
 }
 function renderAdminSubmittedProfileDetails(employee) {
   const educationTable = renderStructuredEntriesTable({ key: "adminEducationalDetails", eyebrow: "Education", title: "Educational details", headers: EDUCATION_HEADERS, displayHeaders: EDUCATION_HEADERS }, employee.onboardingDetails.educationalDetails || "", true);
@@ -2512,7 +2512,7 @@ function renderOnboardingInfoRows(employee, locked) {
   return `<div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Personal details</p><h3>Personal details</h3></div></div><div class="stack">${personalRows}<div class="section-header profile-subsection"><div><p class="eyebrow">Address</p><h3>Present address</h3></div></div>${presentRows}<div class="section-header profile-subsection"><div><p class="eyebrow">Address</p><h3>Permanent address</h3></div><label class="sheet-select-all"><input id="sameAsPresentAddress" type="checkbox" ${sameAsPresent ? "checked" : ""} ${locked ? "disabled" : ""} />Same as present address</label></div>${permanentRows}</div></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Bank details</p><h3>Bank details</h3></div></div><div class="stack">${bankRows}</div></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Employment</p><h3>Employment details</h3></div></div><div class="stack">${employmentRows}</div></div>`;
 }
 function renderAttachmentUploadSection(employee, locked) {
-  return `<div class="subtle-card" data-attachment-card="true"><div class="section-header"><div><p class="eyebrow">Attachments</p><h3>Upload employee documents *</h3></div><span class="pill">${PROFILE_ATTACHMENT_REQUIREMENTS.length} mandatory items</span></div><div class="admin-activity-table-wrap"><table class="admin-activity-table profile-attachment-table"><thead><tr><th>Required document *</th><th>Upload *</th><th>Current file</th></tr></thead><tbody>${PROFILE_ATTACHMENT_REQUIREMENTS.map((item) => { const current = employee.attachments?.[item.key]; return `<tr data-attachment-row="${item.key}"><td>${escapeHtml(item.label)}</td><td><input type="file" data-attachment-key="${item.key}" ${locked ? "disabled" : ""} /></td><td>${current ? `<span class="pill success">${escapeHtml(current.fileName)}</span><div class="muted">${escapeHtml(current.uploadedAt || "")}</div>` : `<span class="muted">Not uploaded</span>`}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+  return `<div class="subtle-card" data-attachment-card="true"><div class="section-header"><div><p class="eyebrow">Attachments</p><h3>Upload employee documents *</h3></div><span class="pill">${PROFILE_ATTACHMENT_REQUIREMENTS.length} mandatory items</span></div><div class="admin-activity-table-wrap"><table class="admin-activity-table profile-attachment-table"><thead><tr><th>Required document *</th><th>Upload *</th><th>Current file</th></tr></thead><tbody>${PROFILE_ATTACHMENT_REQUIREMENTS.map((item) => { const current = employee.attachments?.[item.key]; return `<tr data-attachment-row="${item.key}"><td>${escapeHtml(item.label)}</td><td><input type="file" data-attachment-key="${item.key}" ${locked ? "disabled" : ""} /></td><td>${current ? `<span class="pill success">${escapeHtml(current.fileName)}</span><div class="muted">${escapeHtml(current.uploadedAt || "")}</div>${current.savedFileId ? `<button type="button" class="link-btn" style="padding:4px 0;" onclick="downloadSecureAttachment('${escapeHtml(current.savedFileId)}', '${escapeHtml(current.fileName)}')">Download securely</button>` : ''}` : `<span class="muted">Not uploaded</span>`}</td></tr>`; }).join("")}</tbody></table></div></div>`;
 }
 function validateStructuredTableRows(rows, headers, requireFirstRow) {
   const normalized = rows.map((row) => row || {});
@@ -3796,7 +3796,7 @@ function bindEmployeeEvents() {
     showModalMessage("Onboarding submitted", "Your employee details have been submitted and your profile is now locked until admin approval.", "success");
   });
 
-  app.querySelector("#profileForm")?.addEventListener("submit", (event) => {
+  app.querySelector("#profileForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!employee.hiring.profileEditAllowed) return;
     clearProfileValidationState();
@@ -3826,10 +3826,23 @@ function bindEmployeeEvents() {
     updatedOnboardingDetails.educationalDetails = serializeStructuredEntries(educationRows, EDUCATION_HEADERS);
     updatedOnboardingDetails.previousCompanyDetails = experienceType === "Experienced" ? serializeStructuredEntries(previousCompanyRows, PREVIOUS_COMPANY_HEADERS) : "";
     const nextAttachments = { ...employee.attachments };
-    app.querySelectorAll("[data-attachment-key]").forEach((input) => {
+    const fileInputs = Array.from(app.querySelectorAll("[data-attachment-key]"));
+    for (const input of fileInputs) {
       const file = input.files?.[0];
-      if (file) nextAttachments[input.dataset.attachmentKey] = { fileName: file.name, uploadedAt: `${todayDdMmYyyy()} ${formatTime()}` };
-    });
+      if (file) {
+        try {
+          const savedFileId = await uploadAttachment(file);
+          nextAttachments[input.dataset.attachmentKey] = { 
+            fileName: file.name, 
+            savedFileId, 
+            uploadedAt: `${todayDdMmYyyy()} ${formatTime()}` 
+          };
+        } catch (e) {
+          showModalMessage("Upload failed", `Failed to upload ${file.name}: ${e.message}`);
+          return;
+        }
+      }
+    }
     const missingAttachments = PROFILE_ATTACHMENT_REQUIREMENTS.filter((item) => !nextAttachments[item.key]);
     missingRequired.forEach((field) => markProfileFieldMissing(field.key));
     if (educationMissing) markStructuredSectionMissing("educationalDetails");

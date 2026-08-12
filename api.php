@@ -528,6 +528,89 @@ function handleParseDocx() {
     echo json_encode(["fields" => $fields, "labels" => $labels]);
 }
 
+// === SECURE FILE UPLOAD ===
+function handleUpload() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        echo json_encode(["detail" => "Method not allowed"]);
+        return;
+    }
+
+    if (!isset($_FILES['file'])) {
+        http_response_code(400);
+        echo json_encode(["detail" => "No file uploaded"]);
+        return;
+    }
+
+    $file = $_FILES['file'];
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        http_response_code(500);
+        echo json_encode(["detail" => "Upload error code: " . $file['error']]);
+        return;
+    }
+
+    $dir = __DIR__ . '/uploads/employee-documents';
+    if (!is_dir($dir)) mkdir($dir, 0777, true);
+    if (!file_exists($dir . '/.htaccess')) file_put_contents($dir . '/.htaccess', "Deny from all\n");
+
+    $originalName = basename($file['name']);
+    $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    
+    $allowed_exts = ['pdf', 'png', 'jpg', 'jpeg', 'docx', 'doc', 'txt'];
+    if (!in_array($ext, $allowed_exts)) {
+        $ext = 'txt';
+    }
+
+    $uniqueId = uniqid() . bin2hex(random_bytes(4));
+    $savedName = "{$uniqueId}.{$ext}";
+    $targetPath = $dir . '/' . $savedName;
+
+    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        echo json_encode(["ok" => true, "savedFileId" => $savedName]);
+    } else {
+        http_response_code(500);
+        echo json_encode(["detail" => "Failed to save file on server"]);
+    }
+}
+
+function handleDownload() {
+    checkApiKey(); // Admin only
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        http_response_code(405);
+        echo json_encode(["detail" => "Method not allowed"]);
+        return;
+    }
+
+    $fileId = $_GET['fileId'] ?? '';
+    if (!$fileId || preg_match('/[^a-zA-Z0-9.-]/', $fileId)) {
+        http_response_code(400);
+        echo json_encode(["detail" => "Invalid file ID"]);
+        return;
+    }
+
+    $targetPath = __DIR__ . '/uploads/employee-documents/' . $fileId;
+    if (!file_exists($targetPath)) {
+        http_response_code(404);
+        echo json_encode(["detail" => "File not found"]);
+        return;
+    }
+
+    $mime = mime_content_type($targetPath);
+    if (!$mime) $mime = 'application/octet-stream';
+
+    header('Content-Description: File Transfer');
+    header('Content-Type: ' . $mime);
+    header('Content-Disposition: attachment; filename="' . basename($fileId) . '"');
+    header('Expires: 0');
+    header('Cache-Control: must-revalidate');
+    header('Pragma: public');
+    header('Content-Length: ' . filesize($targetPath));
+
+    readfile($targetPath);
+    exit;
+}
+
 // === ROUTER ===
 switch($route) {
     case 'state':
@@ -540,10 +623,13 @@ switch($route) {
         handleParseDocx();
         break;
     case 'upload':
+        handleUpload();
+        break;
+    case 'download':
+        handleDownload();
+        break;
     case 'analytics':
         // Analytics placeholders - migrating away from Vercel Blob
-        // For now returning OK so frontend does not crash.
-        // If full attendance analytics tracking in MySQL is needed, it can be implemented here.
         echo json_encode(["ok" => true, "status" => "Analytics routed through PHP"]);
         break;
     default:
