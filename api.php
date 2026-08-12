@@ -56,6 +56,28 @@ function getDbConnection() {
 
 // === STATE MANAGEMENT ===
 function handleState() {
+    global $is_localhost;
+    if ($is_localhost) {
+        $local_file = 'local_state.json';
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $state = null;
+            if (file_exists($local_file)) {
+                $state = json_decode(file_get_contents($local_file), true);
+            }
+            echo json_encode(["configured" => true, "source" => "json", "state" => $state]);
+        } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+            $input = json_decode(file_get_contents('php://input'), true);
+            if (!isset($input['state'])) {
+                http_response_code(400);
+                echo json_encode(["detail" => "Missing state payload"]);
+                return;
+            }
+            file_put_contents($local_file, json_encode($input['state']));
+            echo json_encode(["ok" => true]);
+        }
+        return;
+    }
+
     $pdo = getDbConnection();
     
     $pdo->exec("CREATE TABLE IF NOT EXISTS hrms_portal_state (
