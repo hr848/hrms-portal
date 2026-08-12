@@ -237,7 +237,6 @@ const defaultState = {
 
 const app = document.querySelector("#app");
 const logoutBtn = document.querySelector("#logoutBtn");
-const seedDataBtn = document.querySelector("#seedDataBtn");
 const notificationBtn = document.querySelector("#notificationBtn");
 const notificationBadge = document.querySelector("#notificationBadge");
 const notificationCountLabel = document.querySelector("#notificationCountLabel");
@@ -1039,23 +1038,16 @@ async function applyLocalSeedState() {
 
 function createEmptySharedState() {
   const emptyState = clone(defaultState);
-  [
-    "employees", "employeeGroups", "leaveRequests", "holidayRequests", "recentEmails",
-    "ticketTickets", "ticketUsers", "ticketGroups", "notifications"
-  ].forEach((key) => { emptyState[key] = []; });
-  emptyState.activityTemplate = { ...emptyState.activityTemplate, groupClientOptions: [] };
+  emptyState.employees = [];
+  emptyState.ticketTickets = [];
+  emptyState.notifications = [];
+  emptyState.wfhRequests = [];
+  emptyState.leaveRequests = [];
+  emptyState.holidayRequests = [];
+  emptyState.attendance = [];
   return emptyState;
 }
 
-async function resetState() {
-  try {
-    state = normalizeState({ ...clone(defaultState), ...(await loadLocalSeedState()) });
-  } catch {
-    state = normalizeState(clone(defaultState));
-  }
-  saveState();
-  render();
-}
 async function initializeSharedState() {
   try {
     const response = await fetch(REMOTE_STATE_ENDPOINT, { cache: "no-store" });
@@ -1647,7 +1639,6 @@ function render() {
   const hasSession = Boolean(state.session) && !isTicketPage;
   const unreadCount = hasSession ? getUnreadNotificationCount() : 0;
   logoutBtn.classList.toggle("hidden", !hasSession);
-  seedDataBtn.classList.toggle("hidden", !hasSession);
   notificationBtn?.classList.toggle("hidden", !hasSession);
   notificationBadge?.classList.toggle("hidden", !hasSession || unreadCount === 0);
   if (notificationBadge) notificationBadge.textContent = String(unreadCount);
@@ -4707,10 +4698,6 @@ function bindDashboardEvents() {
 }
 
 logoutBtn.addEventListener("click", () => setState({ session: null, activeSection: "overview", selectedLogin: "employee" }));
-seedDataBtn.addEventListener("click", async () => {
-  await resetState();
-  showModalMessage("Demo data reset", "The prototype data has been restored to the recovered default state.", "success");
-});
 
 render();
 initializeSharedState();
