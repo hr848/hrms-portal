@@ -21,7 +21,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $route = $_GET['route'] ?? '';
 
+function checkApiKey() {
+    $headers = getallheaders();
+    $key = $headers['X-API-Key'] ?? $headers['X-Api-Key'] ?? $headers['x-api-key'] ?? '';
+    if ($key !== 'hr848-secure-api-key-2026') {
+        http_response_code(401);
+        echo json_encode(["detail" => "Unauthorized access to API"]);
+        exit;
+    }
+}
+
 // === CONFIGURATION ===
+
 $is_localhost = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']);
 
 if ($is_localhost) {
@@ -66,6 +77,7 @@ function handleState() {
             }
             echo json_encode(["configured" => true, "source" => "json", "state" => $state]);
         } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+            checkApiKey();
             $input = json_decode(file_get_contents('php://input'), true);
             if (!isset($input['state'])) {
                 http_response_code(400);
@@ -98,6 +110,7 @@ function handleState() {
         echo json_encode(["configured" => true, "source" => "mysql", "state" => $state]);
         
     } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+        checkApiKey();
         $input = json_decode(file_get_contents('php://input'), true);
         if (!isset($input['state'])) {
             http_response_code(400);
@@ -135,9 +148,11 @@ function handleFeedback() {
         
         $dir = __DIR__ . '/feedback-attachments';
         if (!is_dir($dir)) mkdir($dir, 0777, true);
+        if (!file_exists($dir . '/.htaccess')) file_put_contents($dir . '/.htaccess', "Deny from all\n");
         
         $stamp = date('Ymd-His');
         $saved_attachments = [];
+        $allowed_exts = ['pdf', 'png', 'jpg', 'jpeg', 'docx', 'doc', 'txt'];
         
         foreach ($attachments as $index => $item) {
             $encoded = $item['contentBase64'] ?? '';
@@ -147,6 +162,11 @@ function handleFeedback() {
             $base = basename($item['filename'] ?? "attachment-{$idx}");
             $cleaned = preg_replace('/[^a-zA-Z0-9._-]+/', '_', $base);
             $filename = trim($cleaned, '._') ?: 'attachment';
+            
+            $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowed_exts)) {
+                $filename = $filename . '.txt'; // Neutralize dangerous extensions
+            }
             
             $saved_name = "{$stamp}-{$idx}-{$filename}";
             $target = $dir . '/' . $saved_name;

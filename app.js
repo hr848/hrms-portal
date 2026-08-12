@@ -991,7 +991,10 @@ function scheduleRemoteStateSave(sharedState = getSharedStateSnapshot(state), im
     try {
       const response = await fetch(REMOTE_STATE_ENDPOINT, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-API-Key": "hr848-secure-api-key-2026"
+        },
         body: JSON.stringify({ state: sharedState })
       });
       const data = await response.json().catch(() => ({}));
