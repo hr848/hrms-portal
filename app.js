@@ -18,7 +18,7 @@ const CLIENT_ONLY_STATE_KEYS = new Set([
 const TEMP_PASSWORD = "welcome@123";
 
 const DOCX_REQUIRED_FIELD_KEYS = new Set([
-  "legalName", "phone", "emergencyContact", "dateOfBirth", "personalMailId", "motherName", "fatherName", "husbandGuardianName",
+  "legalName", "phone", "emergencyContact", "dateOfBirth", "personalMailId", "motherName", "fatherName",
   "pan", "adharNo", "experienceType", "pfAvailable", "pfNo", "uanNo", "bankName",
   "accountNumber", "bankBranch", "accountType", "ifsc", "bankDetailsAttachment",
   "PresentAddressLine1", "PresentAddressLine2", "PresentPostOffice", "PresentPoliceStation", "PresentDistrict", "PresentState",
@@ -32,15 +32,15 @@ const PROFILE_ATTACHMENT_REQUIREMENTS = [
   { key: "passportPhoto", label: "PASSPORT SIZE PHOTO 1 COPY" },
   { key: "updatedResume", label: "LAST UPDATED RESUME" },
   { key: "qualificationCertificates", label: "ALL QUALIFICATION CERTIFICATE INCLUDING MARKSHEET" },
-  { key: "latestOfferLetter", label: "LAST COMPANIES OFFER LETTER/APPOINTMENT LETTER" },
-  { key: "latestRelievingLetter", label: "LAST COMPANIES RELIEVING LATTER/EXPERIENCE LETTER" },
-  { key: "lastPayslips", label: "LAST 3 MONTHS PAYSLIP" },
+  { key: "latestOfferLetter", label: "LAST COMPANIES OFFER LETTER/APPOINTMENT LETTER", required: false },
+  { key: "latestRelievingLetter", label: "LAST COMPANIES RELIEVING LETTER/EXPERIENCE LETTER", required: false },
+  { key: "lastPayslips", label: "LAST 3 MONTHS PAYSLIP", required: false },
   { key: "form16OrBankStatement", label: "FORM 16 OR BANK STATEMENT (LAST 6 MONTHS)" },
-  { key: "previousOfferAndRelease", label: "ALL PREVIOUS COMPANIES OFFER LETTER & RELEASE LETTER" },
+  { key: "previousOfferAndRelease", label: "ALL PREVIOUS COMPANIES OFFER LETTER & RELEASE LETTER", required: false },
   { key: "voterId", label: "VOTER ID" },
   { key: "panCardAttachment", label: "PAN CARD" },
   { key: "adharCardAttachment", label: "ADHAR CARD" },
-  { key: "passportAttachment", label: "PASSPORT" },
+  { key: "passportAttachment", label: "PASSPORT", required: false },
   { key: "bankDetailsAttachment", label: "BANK DETAILS ATTACHMENT / CANCEL CHEQUE / PASSBOOK FRONT PAGE" }
 ];
 const MARITAL_STATUS_OPTIONS = ["Single", "Married", "Divorced", "Widowed", "Separated", "Prefer not to say"];
@@ -69,7 +69,7 @@ const DEFAULT_HOLIDAY_CALENDAR = [
   { id: "HOL-2026-10-21", date: "21-10-2026", day: "Wednesday", name: "Dussehra", type: "CH" },
   { id: "HOL-2026-12-25", date: "25-12-2026", day: "Friday", name: "Christmas Day", type: "CH" }
 ];
-const PERSONAL_DETAIL_KEYS = ["legalName", "phone", "dateOfBirth", "personalMailId", "motherName", "fatherName", "husbandGuardianName", "bloodGroup", "maritalStatus", "spouseName", "numberOfChildren", "emergencyContact", "pan", "adharNo"];
+const PERSONAL_DETAIL_KEYS = ["legalName", "phone", "dateOfBirth", "personalMailId", "motherName", "fatherName", "bloodGroup", "maritalStatus", "spouseName", "numberOfChildren", "emergencyContact", "pan", "adharNo"];
 const PRESENT_ADDRESS_KEYS = ["PresentAddressLine1", "PresentAddressLine2", "PresentPostOffice", "PresentPoliceStation", "PresentDistrict", "PresentState", "PresentPin"];
 const PERMANENT_ADDRESS_KEYS = ["PermanentAddressLine1", "PermanentAddressLine2", "PermanentPostOffice", "PermanentPoliceStation", "PermanentDistrict", "PermanentState", "PermanentPin"];
 const BANK_DETAIL_KEYS = ["bankName", "accountNumber", "bankBranch", "accountType", "ifsc"];
@@ -90,29 +90,28 @@ const defaultOnboardingFields = [
   { key: "personalMailId", label: "Personal mail ID", type: "text", required: true },
   { key: "motherName", label: "Mother's name", type: "text", required: true },
   { key: "fatherName", label: "Father's name", type: "text", required: true },
-  { key: "husbandGuardianName", label: "Husband/Guardian name", type: "text", required: true },
   { key: "bloodGroup", label: "Blood group", type: "text", required: false },
   { key: "maritalStatus", label: "Marital status", type: "text", required: true },
   { key: "spouseName", label: "Name of spouse", type: "text", required: false },
   { key: "numberOfChildren", label: "No. of children", type: "text", required: false },
-  { key: "PresentAddressLine1", label: "Present Address line 1", type: "textarea", required: true },
-  { key: "PresentAddressLine2", label: "Present Address line 2", type: "textarea", required: true },
-  { key: "PresentPostOffice", label: "Present post office", type: "text", required: true },
-  { key: "PresentPoliceStation", label: "Present police station", type: "text", required: true },
-  { key: "PresentDistrict", label: "Present district", type: "text", required: true },
-  { key: "PresentState", label: "Present state", type: "text", required: true },
-  { key: "PresentPin", label: "Present PIN", type: "text", required: true },
-  { key: "PermanentAddressLine1", label: "Permanent Address line 1", type: "textarea", required: true },
-  { key: "PermanentAddressLine2", label: "Permanent Address line 2", type: "textarea", required: true },
-  { key: "PermanentPostOffice", label: "Permanent post office", type: "text", required: true },
-  { key: "PermanentPoliceStation", label: "Permanent police station", type: "text", required: true },
-  { key: "PermanentDistrict", label: "Permanent district", type: "text", required: true },
-  { key: "PermanentState", label: "Permanent state", type: "text", required: true },
-  { key: "PermanentPin", label: "Permanent PIN", type: "text", required: true },
+  { key: "PresentAddressLine1", label: "Address line 1", type: "textarea", required: true },
+  { key: "PresentAddressLine2", label: "Address line 2", type: "textarea", required: false },
+  { key: "PresentPostOffice", label: "Post office", type: "text", required: true },
+  { key: "PresentPoliceStation", label: "Police station", type: "text", required: true },
+  { key: "PresentDistrict", label: "District", type: "text", required: true },
+  { key: "PresentState", label: "State", type: "text", required: true },
+  { key: "PresentPin", label: "PIN", type: "text", required: true },
+  { key: "PermanentAddressLine1", label: "Address line 1", type: "textarea", required: true },
+  { key: "PermanentAddressLine2", label: "Address line 2", type: "textarea", required: false },
+  { key: "PermanentPostOffice", label: "Post office", type: "text", required: true },
+  { key: "PermanentPoliceStation", label: "Police station", type: "text", required: true },
+  { key: "PermanentDistrict", label: "District", type: "text", required: true },
+  { key: "PermanentState", label: "State", type: "text", required: true },
+  { key: "PermanentPin", label: "PIN", type: "text", required: true },
   { key: "experienceType", label: "Experienced/Fresher", type: "text", required: true },
   { key: "pfAvailable", label: "PF available", type: "text", required: true },
   { key: "pfNo", label: "PF no.", type: "text", required: true },
-  { key: "uanNo", label: "UAN no.", type: "text", required: true }
+  { key: "uanNo", label: "UAN no.", type: "text", required: false }
 ];
 
 const defaultActivityFields = [
@@ -1964,12 +1963,12 @@ function renderAdminOnboardingInfoRows(employee) {
   const presentRows = renderAdminReadonlyFieldGroup(meta, employee, PRESENT_ADDRESS_KEYS, { wide: true });
   const permanentRows = renderAdminReadonlyFieldGroup(meta, employee, PERMANENT_ADDRESS_KEYS, { wide: true });
   const bankRows = renderAdminReadonlyFieldGroup(meta, employee, BANK_DETAIL_KEYS);
-  const employmentKeys = experienceValue === "Experienced" ? EMPLOYMENT_DETAIL_KEYS : EMPLOYMENT_DETAIL_KEYS.filter((key) => !["pfAvailable", "pfNo", "uanNo"].includes(key));
+  const employmentKeys = experienceValue === "Experienced" ? EMPLOYMENT_DETAIL_KEYS : EMPLOYMENT_DETAIL_KEYS.filter((key) => !["pfAvailable", "pfNo"].includes(key));
   const employmentRows = renderAdminReadonlyFieldGroup(meta, employee, employmentKeys);
   return `<div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Personal details</p><h3>Personal details</h3></div></div><div class="stack">${personalRows || emptyState("No personal details saved yet.")}<div class="section-header profile-subsection"><div><p class="eyebrow">Address</p><h3>Present address</h3></div></div>${presentRows || emptyState("No present address saved yet.")}<div class="section-header profile-subsection"><div><p class="eyebrow">Address</p><h3>Permanent address</h3></div></div>${permanentRows || emptyState("No permanent address saved yet.")}</div></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Bank details</p><h3>Bank details</h3></div></div><div class="stack">${bankRows || emptyState("No bank details saved yet.")}</div></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Employment</p><h3>Employment details</h3></div></div><div class="stack">${employmentRows || emptyState("No employment details saved yet.")}</div></div>`;
 }
 function renderAdminAttachmentReviewSection(employee) {
-  return `<div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Attachments</p><h3>Uploaded employee documents</h3></div><span class="pill">${PROFILE_ATTACHMENT_REQUIREMENTS.length} items</span></div><div class="admin-activity-table-wrap"><table class="admin-activity-table profile-attachment-table"><thead><tr><th>Required document</th><th>Current file</th></tr></thead><tbody>${PROFILE_ATTACHMENT_REQUIREMENTS.map((item) => { const current = employee.attachments?.[item.key]; return `<tr><td>${escapeHtml(item.label)}</td><td>${current ? `<span class="pill success">${escapeHtml(current.fileName)}</span><div class="muted">${escapeHtml(current.uploadedAt || "")}</div>${current.savedFileId ? `<button type="button" class="link-btn" style="padding:4px 0;" onclick="downloadSecureAttachment('${escapeHtml(current.savedFileId)}', '${escapeHtml(current.fileName)}')">Download securely</button>` : ''}` : `<span class="muted">Not uploaded</span>`}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+  return `<div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Attachments</p><h3>Uploaded employee documents</h3></div><span class="pill">${PROFILE_ATTACHMENT_REQUIREMENTS.length} items</span></div><div class="admin-activity-table-wrap"><table class="admin-activity-table profile-attachment-table"><thead><tr><th>Required document</th><th>Current file</th></tr></thead><tbody>${PROFILE_ATTACHMENT_REQUIREMENTS.map((item) => { const current = employee.attachments?.[item.key]; return `<tr><td>${escapeHtml(item.label)}</td><td>${current ? `<span class="pill success">${escapeHtml(current.fileName)}</span><div class="muted">${escapeHtml(current.uploadedAt || "")}</div>${current.savedFileId ? `<button type="button" class="link-btn" style="padding:4px 0; margin-right: 8px;" onclick="viewSecureAttachment('${escapeHtml(current.savedFileId)}', '${escapeHtml(current.fileName)}')">View</button><button type="button" class="link-btn" style="padding:4px 0;" onclick="downloadSecureAttachment('${escapeHtml(current.savedFileId)}', '${escapeHtml(current.fileName)}')">Download</button>` : ''}` : `<span class="muted">Not uploaded</span>`}</td></tr>`; }).join("")}</tbody></table></div></div>`;
 }
 function renderAdminSubmittedProfileDetails(employee) {
   const educationTable = renderStructuredEntriesTable({ key: "adminEducationalDetails", eyebrow: "Education", title: "Educational details", headers: EDUCATION_HEADERS, displayHeaders: EDUCATION_HEADERS }, employee.onboardingDetails.educationalDetails || "", true);
@@ -2004,14 +2003,21 @@ function renderEmployeeSection(employee, attendanceCount, activityCount) {
   if (!employee) return `<div class="card"><h2>Employee not found</h2></div>`;
   if (employee.hiring.offerStatus === "not_sent") return `<div class="card"><p class="eyebrow">Offer pending</p><h2>Your access is not active yet</h2><p class="muted">The admin has not sent your offer letter yet. Once the offer is sent, you can log in and continue onboarding.</p></div>`;
   if (employee.hiring.offerStatus === "sent" && !employee.hiring.offerAcceptedAt) { const offerContent = buildOfferContent(employee); return `<div class="card"><div class="section-header"><div><p class="eyebrow">Offer acceptance</p><h2>Review your offer letter</h2></div><span class="pill warning">Awaiting acceptance</span></div><div class="template-preview"><strong>${escapeHtml(offerContent.subject)}</strong><pre class="message-preview">${escapeHtml(offerContent.body)}</pre></div><div class="actions" style="margin-top:12px;"><button class="primary-btn" id="acceptOfferBtn" type="button">Accept offer</button></div><p class="helper">Once accepted, the portal will open your employee detail form so you can complete onboarding.</p></div>`; }
-  if (!employee.hiring.onboardingSubmittedAt) return renderEmployeeProfile(employee);
-  if (state.activeSection === "profile") return renderEmployeeProfile(employee);
-  if (state.activeSection === "groups") return renderEmployeeGroups(employee);
-  if (state.activeSection === "attendance") return renderEmployeeAttendance(employee);
-  if (state.activeSection === "leave_wfh") return renderEmployeeLeaveWfh(employee);
-  if (state.activeSection === "holiday") return renderEmployeeHolidayConsole(employee);
-  if (state.activeSection === "activity") return renderEmployeeActivity(employee, activityCount);
-  return `<div class="section-grid"><div class="card stat"><p class="stat-label">Attendance records</p><p class="stat-value">${attendanceCount}</p></div><div class="card stat"><p class="stat-label">Activity logs</p><p class="stat-value">${activityCount}</p></div><div class="card stat"><p class="stat-label">Profile access</p><p class="stat-value" style="font-size:1.3rem;">${employee.hiring.profileEditAllowed ? "Editable" : "Locked"}</p></div><div class="card wide"><h3>Profile snapshot</h3><div class="list"><div class="list-item"><strong>Employee ID</strong><span>${employee.id}</span></div><div class="list-item"><strong>Department</strong><span>${escapeHtml(employee.department)}</span></div><div class="list-item"><strong>Role</strong><span>${escapeHtml(employee.role)}</span></div><div class="list-item"><strong>Onboarding submitted</strong><span>${formatDate(employee.hiring.onboardingSubmittedAt)}</span></div><div class="list-item"><strong>Check in policy</strong><span>${escapeHtml(state.attendancePolicy?.checkInTime || "Not configured")} ${state.attendancePolicy?.checkInTime ? `(Grace ${escapeHtml(String(state.attendancePolicy?.checkInGraceMinutes || 0))} mins)` : ""}</span></div><div class="list-item"><strong>Check out policy</strong><span>${escapeHtml(state.attendancePolicy?.checkOutTime || "Not configured")} ${state.attendancePolicy?.checkOutTime ? `(Grace ${escapeHtml(String(state.attendancePolicy?.checkOutGraceMinutes || 0))} mins)` : ""}</span></div></div></div><div class="card tall"><h3>Next actions</h3><div class="stack"><div class="pill ${employee.hiring.profileEditAllowed ? "success" : "warning"}">${employee.hiring.profileEditAllowed ? "Profile edit allowed" : "Profile locked"}</div><div class="pill">Open profile to view submitted onboarding details</div><div class="pill">Use attendance and activity modules normally</div></div></div></div>`;
+  
+  if (!employee.hiring.onboardingSubmittedAt && !employee.hiring.profileDraftSaved) return renderEmployeeProfile(employee);
+  
+  let prefixHTML = "";
+  if (!employee.hiring.onboardingSubmittedAt && employee.hiring.profileDraftSaved) {
+    prefixHTML = `<div class="card warning" style="margin-bottom: 24px; background: #fff5e6; border: 1px solid #ffcc80;"><div class="section-header"><div><p class="eyebrow" style="color: #e65100;">Action Required</p><h2 style="color: #e65100;">Complete your onboarding profile</h2></div></div><p style="color: #e65100; margin-top: 8px;">Your profile is currently saved as a draft. You can use the portal for attendance and other day-to-day tasks, but please go to the Profile section and fill all remaining fields to formally submit it.</p></div>`;
+  }
+
+  if (state.activeSection === "profile") return prefixHTML + renderEmployeeProfile(employee);
+  if (state.activeSection === "groups") return prefixHTML + renderEmployeeGroups(employee);
+  if (state.activeSection === "attendance") return prefixHTML + renderEmployeeAttendance(employee);
+  if (state.activeSection === "leave_wfh") return prefixHTML + renderEmployeeLeaveWfh(employee);
+  if (state.activeSection === "holiday") return prefixHTML + renderEmployeeHolidayConsole(employee);
+  if (state.activeSection === "activity") return prefixHTML + renderEmployeeActivity(employee, activityCount);
+  return prefixHTML + `<div class="section-grid"><div class="card stat"><p class="stat-label">Attendance records</p><p class="stat-value">${attendanceCount}</p></div><div class="card stat"><p class="stat-label">Activity logs</p><p class="stat-value">${activityCount}</p></div><div class="card stat"><p class="stat-label">Profile access</p><p class="stat-value" style="font-size:1.3rem;">${employee.hiring.profileEditAllowed ? "Editable" : "Locked"}</p></div><div class="card wide"><h3>Profile snapshot</h3><div class="list"><div class="list-item"><strong>Employee ID</strong><span>${employee.id}</span></div><div class="list-item"><strong>Department</strong><span>${escapeHtml(employee.department)}</span></div><div class="list-item"><strong>Role</strong><span>${escapeHtml(employee.role)}</span></div><div class="list-item"><strong>Onboarding submitted</strong><span>${formatDate(employee.hiring.onboardingSubmittedAt)}</span></div><div class="list-item"><strong>Check in policy</strong><span>${escapeHtml(state.attendancePolicy?.checkInTime || "Not configured")} ${state.attendancePolicy?.checkInTime ? `(Grace ${escapeHtml(String(state.attendancePolicy?.checkInGraceMinutes || 0))} mins)` : ""}</span></div><div class="list-item"><strong>Check out policy</strong><span>${escapeHtml(state.attendancePolicy?.checkOutTime || "Not configured")} ${state.attendancePolicy?.checkOutTime ? `(Grace ${escapeHtml(String(state.attendancePolicy?.checkOutGraceMinutes || 0))} mins)` : ""}</span></div></div></div><div class="card tall"><h3>Next actions</h3><div class="stack"><div class="pill ${employee.hiring.profileEditAllowed ? "success" : "warning"}">${employee.hiring.profileEditAllowed ? "Profile edit allowed" : "Profile locked"}</div><div class="pill">Open profile to view submitted onboarding details</div><div class="pill">Use attendance and activity modules normally</div></div></div></div>`;
 }
 function renderEmployeeOnboarding(employee) {
   return `<div class="split"><div class="card"><div class="section-header"><div><p class="eyebrow">Onboarding</p><h2>${escapeHtml(state.onboardingTemplate.title)}</h2></div><span class="pill warning">Required before profile access</span></div><p class="muted">${escapeHtml(state.onboardingTemplate.instructions)}</p><form id="employeeOnboardingForm" class="stack">${renderOnboardingFields(employee.onboardingDetails)}<button class="primary-btn" type="submit">Submit onboarding details</button></form></div><div class="card"><h3>What happens next</h3><div class="stack"><div class="empty-state">After submission, these details will appear in your profile.</div><div class="empty-state">Your profile stays locked for edits until the admin grants permission.</div><div class="empty-state">Once onboarding is complete, attendance and activity tracking work as normal.</div></div></div></div>`;
@@ -2021,7 +2027,7 @@ function renderEmployeeProfile(employee) {
   const educationTable = renderStructuredEntriesTable({ key: "educationalDetails", eyebrow: "Education", title: "Educational details *", headers: EDUCATION_HEADERS, displayHeaders: EDUCATION_HEADERS.map((header) => `${header} *`) }, employee.onboardingDetails.educationalDetails || "", locked);
   const experienceValue = employee.onboardingDetails.experienceType || "";
   const previousCompanyTable = renderStructuredEntriesTable({ key: "previousCompanyDetails", eyebrow: "Previous company", title: "Previous company details", headers: PREVIOUS_COMPANY_HEADERS, hidden: experienceValue !== "Experienced" }, employee.onboardingDetails.previousCompanyDetails || "", locked);
-  return `<div class="stack"><div class="card"><div class="section-header"><div><p class="eyebrow">Import onboarding DOCX</p><h2>Upload employee form</h2></div><span class="pill">Office Use Only ignored</span></div><form id="employeeDocImportForm" class="stack"><div class="field"><label for="employeeDocFile">DOCX file *</label><input id="employeeDocFile" type="file" accept=".doc,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required /></div><button class="secondary-btn" type="submit">Extract employee details</button><p class="helper">The extracted values will remain editable until you review and save the profile.</p></form></div><div class="card"><div class="section-header"><div><p class="eyebrow">Account security</p><h2>Password</h2></div><span class="pill warning">Email reset pending</span></div><form id="employeePasswordForm" class="stack"><div class="grid-2"><div class="field"><label for="employeeCurrentPassword">Current password</label><input id="employeeCurrentPassword" type="password" required /></div><div class="field"><label for="employeeNewPassword">New password</label><input id="employeeNewPassword" type="password" minlength="6" required /></div></div><div class="field"><label for="employeeConfirmPassword">Confirm new password</label><input id="employeeConfirmPassword" type="password" minlength="6" required /></div><div class="actions"><button class="secondary-btn" type="submit">Change password</button><button class="link-btn auth-helper-btn" id="employeeProfileForgotPasswordBtn" type="button">Forgot password?</button></div><p class="helper">Email-based reset links will be enabled after mail integration. This form changes your password only while you are logged in.</p></form></div><div class="card"><div class="section-header"><div><p class="eyebrow">Profile</p><h2>Onboarding information</h2></div><span class="pill ${locked ? "warning" : "success"}">${locked ? "Edit locked" : `${getOnboardingFieldEntries(employee).length} saved fields`}</span></div><p class="helper">${locked ? "These details are locked after employee review and save. An admin must allow edits to unlock them again." : "Review the extracted details in this format, update anything required, then save to lock the profile."}</p><form id="profileForm" class="stack">${renderOnboardingInfoRows(employee, locked)}${educationTable}${previousCompanyTable}${renderAttachmentUploadSection(employee, locked)}<div class="actions"><button class="primary-btn" type="submit" ${locked ? "disabled" : ""}>Save profile</button></div></form></div></div>`;
+  return `<div class="stack"><div class="card"><div class="section-header"><div><p class="eyebrow">Import onboarding DOCX</p><h2>Upload employee form</h2></div><span class="pill">Office Use Only ignored</span></div><form id="employeeDocImportForm" class="stack"><div class="field"><label for="employeeDocFile">DOCX file *</label><input id="employeeDocFile" type="file" accept=".doc,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required /></div><button class="secondary-btn" type="submit">Extract employee details</button><p class="helper">The extracted values will remain editable until you review and save the profile.</p></form></div><div class="card"><div class="section-header"><div><p class="eyebrow">Account security</p><h2>Password</h2></div><span class="pill warning">Email reset pending</span></div><form id="employeePasswordForm" class="stack"><div class="grid-2"><div class="field"><label for="employeeCurrentPassword">Current password</label><input id="employeeCurrentPassword" type="password" required /></div><div class="field"><label for="employeeNewPassword">New password</label><input id="employeeNewPassword" type="password" minlength="6" required /></div></div><div class="field"><label for="employeeConfirmPassword">Confirm new password</label><input id="employeeConfirmPassword" type="password" minlength="6" required /></div><div class="actions"><button class="secondary-btn" type="submit">Change password</button><button class="link-btn auth-helper-btn" id="employeeProfileForgotPasswordBtn" type="button">Forgot password?</button></div><p class="helper">Email-based reset links will be enabled after mail integration. This form changes your password only while you are logged in.</p></form></div><div class="card"><div class="section-header"><div><p class="eyebrow">Profile</p><h2>Onboarding information</h2></div><span class="pill ${locked ? "warning" : "success"}">${locked ? "Edit locked" : `${getOnboardingFieldEntries(employee).length} saved fields`}</span></div><p class="helper">${locked ? "These details are locked after employee review and save. An admin must allow edits to unlock them again." : "Review the extracted details in this format, update anything required, then save to lock the profile."}</p><form id="profileForm" class="stack">${renderOnboardingInfoRows(employee, locked)}${educationTable}${previousCompanyTable}${renderAttachmentUploadSection(employee, locked)}<div class="actions"><button class="primary-btn" type="submit" ${locked ? "disabled" : ""}>Save profile</button><button class="secondary-btn" id="saveProfileDraftBtn" type="button" ${locked ? "disabled" : ""}>Save as draft</button></div></form></div></div>`;
 }
 function renderEmployeeAttendance(employee) {
   const policy = getAttendancePolicyStatus();
@@ -2512,7 +2518,7 @@ function renderOnboardingInfoRows(employee, locked) {
   return `<div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Personal details</p><h3>Personal details</h3></div></div><div class="stack">${personalRows}<div class="section-header profile-subsection"><div><p class="eyebrow">Address</p><h3>Present address</h3></div></div>${presentRows}<div class="section-header profile-subsection"><div><p class="eyebrow">Address</p><h3>Permanent address</h3></div><label class="sheet-select-all"><input id="sameAsPresentAddress" type="checkbox" ${sameAsPresent ? "checked" : ""} ${locked ? "disabled" : ""} />Same as present address</label></div>${permanentRows}</div></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Bank details</p><h3>Bank details</h3></div></div><div class="stack">${bankRows}</div></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Employment</p><h3>Employment details</h3></div></div><div class="stack">${employmentRows}</div></div>`;
 }
 function renderAttachmentUploadSection(employee, locked) {
-  return `<div class="subtle-card" data-attachment-card="true"><div class="section-header"><div><p class="eyebrow">Attachments</p><h3>Upload employee documents *</h3></div><span class="pill">${PROFILE_ATTACHMENT_REQUIREMENTS.length} mandatory items</span></div><div class="admin-activity-table-wrap"><table class="admin-activity-table profile-attachment-table"><thead><tr><th>Required document *</th><th>Upload *</th><th>Current file</th></tr></thead><tbody>${PROFILE_ATTACHMENT_REQUIREMENTS.map((item) => { const current = employee.attachments?.[item.key]; return `<tr data-attachment-row="${item.key}"><td>${escapeHtml(item.label)}</td><td><input type="file" data-attachment-key="${item.key}" ${locked ? "disabled" : ""} /></td><td>${current ? `<span class="pill success">${escapeHtml(current.fileName)}</span><div class="muted">${escapeHtml(current.uploadedAt || "")}</div>${current.savedFileId ? `<button type="button" class="link-btn" style="padding:4px 0;" onclick="downloadSecureAttachment('${escapeHtml(current.savedFileId)}', '${escapeHtml(current.fileName)}')">Download securely</button>` : ''}` : `<span class="muted">Not uploaded</span>`}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+  return `<div class="subtle-card" data-attachment-card="true"><div class="section-header"><div><p class="eyebrow">Attachments</p><h3>Upload employee documents *</h3></div><span class="pill">${PROFILE_ATTACHMENT_REQUIREMENTS.length} mandatory items</span></div><div class="admin-activity-table-wrap"><table class="admin-activity-table profile-attachment-table"><thead><tr><th>Required document *</th><th>Upload *</th><th>Current file</th></tr></thead><tbody>${PROFILE_ATTACHMENT_REQUIREMENTS.map((item) => { const current = employee.attachments?.[item.key]; return `<tr data-attachment-row="${item.key}"><td>${escapeHtml(item.label)}</td><td><input type="file" data-attachment-key="${item.key}" ${locked ? "disabled" : ""} /></td><td>${current ? `<span class="pill success">${escapeHtml(current.fileName)}</span><div class="muted">${escapeHtml(current.uploadedAt || "")}</div>${current.savedFileId ? `<button type="button" class="link-btn" style="padding:4px 0; margin-right: 8px;" onclick="viewSecureAttachment('${escapeHtml(current.savedFileId)}', '${escapeHtml(current.fileName)}')">View</button><button type="button" class="link-btn" style="padding:4px 0;" onclick="downloadSecureAttachment('${escapeHtml(current.savedFileId)}', '${escapeHtml(current.fileName)}')">Download</button>` : ''}` : `<span class="muted">Not uploaded</span>`}</td></tr>`; }).join("")}</tbody></table></div></div>`;
 }
 function validateStructuredTableRows(rows, headers, requireFirstRow) {
   const normalized = rows.map((row) => row || {});
@@ -3796,6 +3802,32 @@ function bindEmployeeEvents() {
     showModalMessage("Onboarding submitted", "Your employee details have been submitted and your profile is now locked until admin approval.", "success");
   });
 
+  
+  app.querySelector("#saveProfileDraftBtn")?.addEventListener("click", () => {
+    clearProfileValidationState();
+    const updatedOnboardingDetails = { ...employee.onboardingDetails };
+    app.querySelectorAll("[data-profile-detail-key]").forEach((element) => {
+      updatedOnboardingDetails[element.dataset.profileDetailKey] = element.value.trim();
+    });
+    const basicKeys = ["legalName", "phone", "dateOfBirth", "personalMailId", "motherName", "fatherName", "maritalStatus", "emergencyContact", "pan", "adharNo"];
+    const missingKeys = basicKeys.filter(k => !String(updatedOnboardingDetails[k] || "").trim());
+    if (missingKeys.length) {
+      missingKeys.forEach((key) => markProfileFieldMissing(key));
+      app.querySelector('.profile-row-input.is-missing, .sheet-input.is-missing')?.focus();
+      showModalMessage("Basic fields missing", "Please fill all basic details up to Aadhar No. to save as draft.");
+      return;
+    }
+    const updatedEmployee = {
+      ...employee,
+      onboardingDetails: updatedOnboardingDetails,
+      profile: mergeOnboardingIntoProfile(employee, updatedOnboardingDetails),
+      hiring: { ...employee.hiring, profileDraftSaved: true }
+    };
+    setState({
+      employees: state.employees.map((item) => item.id === employee.id ? updatedEmployee : item)
+    });
+    showModalMessage("Draft saved", "Your basic details have been saved. You can now access other features, but please remember to fill the complete form.", "success");
+  });
   app.querySelector("#profileForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!employee.hiring.profileEditAllowed) return;
@@ -3818,7 +3850,7 @@ function bindEmployeeEvents() {
     const pfAvailable = String(updatedOnboardingDetails.pfAvailable || "").trim();
     const missingRequired = requiredFields.filter((field) => {
       if (field.key === "pfAvailable" && experienceType !== "Experienced") return false;
-      if (["pfNo", "uanNo"].includes(field.key) && (experienceType !== "Experienced" || pfAvailable !== "Yes")) return false;
+      if (["pfNo"].includes(field.key) && (experienceType !== "Experienced" || pfAvailable !== "Yes")) return false;
       return !String(updatedOnboardingDetails[field.key] || "").trim();
     });
     const educationMissing = !validateStructuredTableRows(educationRows, EDUCATION_HEADERS, true);
@@ -3843,7 +3875,7 @@ function bindEmployeeEvents() {
         }
       }
     }
-    const missingAttachments = PROFILE_ATTACHMENT_REQUIREMENTS.filter((item) => !nextAttachments[item.key]);
+    const missingAttachments = PROFILE_ATTACHMENT_REQUIREMENTS.filter((item) => item.required !== false && !nextAttachments[item.key]);
     missingRequired.forEach((field) => markProfileFieldMissing(field.key));
     if (educationMissing) markStructuredSectionMissing("educationalDetails");
     if (previousCompanyMissing) markStructuredSectionMissing("previousCompanyDetails");
@@ -3944,10 +3976,10 @@ function bindEmployeeEvents() {
     const pfAvailable = pfAvailableInput?.value === "Yes";
     const pfAvailableRow = app.querySelector(`[data-profile-field-row="pfAvailable"]`);
     const pfNoRow = app.querySelector(`[data-profile-field-row="pfNo"]`);
-    const uanNoRow = app.querySelector(`[data-profile-field-row="uanNo"]`);
+    
     if (pfAvailableRow) pfAvailableRow.style.display = experienced ? "" : "none";
     if (pfNoRow) pfNoRow.style.display = experienced && pfAvailable ? "" : "none";
-    if (uanNoRow) uanNoRow.style.display = experienced && pfAvailable ? "" : "none";
+    
     const previousCard = app.querySelector('[data-structured-card="previousCompanyDetails"]');
     if (previousCard) previousCard.style.display = experienced ? "" : "none";
   };
