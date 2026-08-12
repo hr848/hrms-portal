@@ -586,7 +586,7 @@ h1 {
 
 .group-icon-btn {
   padding: 0.55rem 0.8rem;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .group-add-member-form,
@@ -1382,7 +1382,7 @@ h1 {
 }
 
 .admin-activity-table thead tr:first-child th {
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .attendance-report-table thead tr:first-child th {
@@ -1440,7 +1440,7 @@ h1 {
 .sheet-slno,
 .sheet-select-cell,
 .sheet-timestamp {
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .sheet-footer {
@@ -1825,7 +1825,7 @@ h1 {
   align-items: center;
   gap: 8px;
   font: inherit;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .sheet-select-all input {
@@ -2248,7 +2248,7 @@ button:disabled {
 .ticket-brand {
   gap: 12px;
   font-size: 1rem;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .ticket-brand strong {
@@ -2274,7 +2274,7 @@ button:disabled {
   align-items: center;
   gap: 6px;
   font-weight: 700;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .ticket-nav-icon {
@@ -2921,7 +2921,7 @@ button:disabled {
 }
 
 .leave-wfh-picker .eyebrow {
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .leave-wfh-months {
@@ -2932,7 +2932,7 @@ button:disabled {
   min-width: 0;
   padding: 0.72rem 0.35rem;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .leave-wfh-days {
@@ -2983,7 +2983,7 @@ button:disabled {
 .leave-wfh-picker-header strong {
   min-width: 0;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
 }
