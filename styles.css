@@ -1961,19 +1961,20 @@ button:disabled {
 }
 
 .profile-row-control {
-  width: min(21%, 180px);
+  width: 60%;
 }
 
 .profile-row-control.wide {
-  width: min(21%, 180px);
+  width: 80%;
 }
 
 .profile-row-input {
   width: 100%;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  text-align: right;
+  border: 1px solid rgba(16, 24, 40, 0.15);
+  background: #ffffff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-align: left;
   color: var(--text);
   font: inherit;
 }
@@ -1982,6 +1983,7 @@ button:disabled {
   opacity: 1;
   color: var(--text);
   cursor: default;
+  background: #f8fafc;
 }
 
 .profile-row-textarea {
