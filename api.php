@@ -22,11 +22,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $route = $_GET['route'] ?? '';
 
 // === CONFIGURATION ===
-$db_host = '127.0.0.1';
-$db_port = '3306';
-$db_name = 'admin_hrms0';
-$db_user = 'hrms_avanzar';
-$db_pass = 'wa65FgJZdtyzhdj'; // Replace this before deploying!
+$is_localhost = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']);
+
+if ($is_localhost) {
+    $db_host = '127.0.0.1';
+    $db_port = '3306';
+    $db_name = 'hrms0';
+    $db_user = 'root';
+    $db_pass = '';
+} else {
+    $db_host = '127.0.0.1';
+    $db_port = '3306';
+    $db_name = 'admin_hrms0';
+    $db_user = 'hrms_avanzar';
+    $db_pass = 'wa65FgJZdtyzhdj'; // Replace this before deploying!
+}
 
 function getDbConnection() {
     global $db_host, $db_port, $db_name, $db_user, $db_pass;
