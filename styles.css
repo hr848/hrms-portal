@@ -1997,6 +1997,11 @@ button:disabled {
   vertical-align: top;
 }
 
+.profile-detail-table th:first-child,
+.profile-detail-table td:first-child {
+  min-width: 220px;
+}
+
 @media (max-width: 900px) {
   .profile-row {
     display: grid;
