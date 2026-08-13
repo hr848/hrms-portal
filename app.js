@@ -2236,7 +2236,7 @@ function renderEmployeeSection(employee, attendanceCount, activityCount) {
   if (state.activeSection === "leave_wfh") return prefixHTML + renderEmployeeLeaveWfh(employee);
   if (state.activeSection === "holiday") return prefixHTML + renderEmployeeHolidayConsole(employee);
   if (state.activeSection === "activity") return prefixHTML + renderEmployeeActivity(employee, activityCount);
-  return prefixHTML + `<div class="section-grid"><div class="card stat"><p class="stat-label">Attendance records</p><p class="stat-value">${attendanceCount}</p></div><div class="card stat"><p class="stat-label">Activity logs</p><p class="stat-value">${activityCount}</p></div><div class="card stat"><p class="stat-label">Profile access</p><p class="stat-value" style="font-size:1.3rem;">${employee.hiring.profileEditAllowed ? "Editable" : "Locked"}</p></div><div class="card wide"><h3>Profile snapshot</h3><div class="list"><div class="list-item"><strong>Employee ID</strong><span>${employee.id}</span></div><div class="list-item"><strong>Department</strong><span>${escapeHtml(employee.department)}</span></div><div class="list-item"><strong>Role</strong><span>${escapeHtml(employee.role)}</span></div><div class="list-item"><strong>Onboarding submitted</strong><span>${formatDate(employee.hiring.onboardingSubmittedAt)}</span></div><div class="list-item"><strong>Check in policy</strong><span>${escapeHtml(state.attendancePolicy?.checkInTime || "Not configured")} ${state.attendancePolicy?.checkInTime ? `(Grace ${escapeHtml(String(state.attendancePolicy?.checkInGraceMinutes || 0))} mins)` : ""}</span></div><div class="list-item"><strong>Check out policy</strong><span>${escapeHtml(state.attendancePolicy?.checkOutTime || "Not configured")} ${state.attendancePolicy?.checkOutTime ? `(Grace ${escapeHtml(String(state.attendancePolicy?.checkOutGraceMinutes || 0))} mins)` : ""}</span></div></div></div><div class="card tall"><h3>Next actions</h3><div class="stack"><div class="pill ${employee.hiring.profileEditAllowed ? "success" : "warning"}">${employee.hiring.profileEditAllowed ? "Profile edit allowed" : "Profile locked"}</div><div class="pill">Open profile to view submitted onboarding details</div><div class="pill">Use attendance and activity modules normally</div></div></div></div>`;
+  return prefixHTML + `<div class="section-grid"><div class="card stat"><p class="stat-label">Attendance records</p><p class="stat-value">${attendanceCount}</p></div><div class="card stat"><p class="stat-label">Activity logs</p><p class="stat-value">${activityCount}</p></div><div class="card stat"><p class="stat-label">Profile access</p><p class="stat-value" style="font-size:1.3rem;">${employee.hiring.profileEditAllowed ? "Editable" : "Locked"}</p></div><div class="card wide"><h3>Profile snapshot</h3><div class="list"><div class="list-item"><strong>Employee ID</strong><span>${escapeHtml(employee.signupCode || employee.id)}</span></div><div class="list-item"><strong>Department</strong><span>${escapeHtml(employee.department)}</span></div><div class="list-item"><strong>Role</strong><span>${escapeHtml(employee.role)}</span></div><div class="list-item"><strong>Onboarding submitted</strong><span>${formatDate(employee.hiring.onboardingSubmittedAt)}</span></div><div class="list-item"><strong>Check in policy</strong><span>${escapeHtml(state.attendancePolicy?.checkInTime || "Not configured")} ${state.attendancePolicy?.checkInTime ? `(Grace ${escapeHtml(String(state.attendancePolicy?.checkInGraceMinutes || 0))} mins)` : ""}</span></div><div class="list-item"><strong>Check out policy</strong><span>${escapeHtml(state.attendancePolicy?.checkOutTime || "Not configured")} ${state.attendancePolicy?.checkOutTime ? `(Grace ${escapeHtml(String(state.attendancePolicy?.checkOutGraceMinutes || 0))} mins)` : ""}</span></div></div></div><div class="card tall"><h3>Next actions</h3><div class="stack"><div class="pill ${employee.hiring.profileEditAllowed ? "success" : "warning"}">${employee.hiring.profileEditAllowed ? "Profile edit allowed" : "Profile locked"}</div><div class="pill">Open profile to view submitted onboarding details</div><div class="pill">Use attendance and activity modules normally</div></div></div></div>`;
 }
 function renderEmployeeOnboarding(employee) {
   return `<div class="split"><div class="card"><div class="section-header"><div><p class="eyebrow">Onboarding</p><h2>${escapeHtml(state.onboardingTemplate.title)}</h2></div><span class="pill warning">Required before profile access</span></div><p class="muted">${escapeHtml(state.onboardingTemplate.instructions)}</p><form id="employeeOnboardingForm" class="stack">${renderOnboardingFields(employee.onboardingDetails)}<button class="primary-btn" type="submit">Submit onboarding details</button></form></div><div class="card"><h3>What happens next</h3><div class="stack"><div class="empty-state">After submission, these details will appear in your profile.</div><div class="empty-state">Your profile stays locked for edits until the admin grants permission.</div><div class="empty-state">Once onboarding is complete, attendance and activity tracking work as normal.</div></div></div></div>`;
@@ -4042,7 +4042,7 @@ function bindEmployeeEvents() {
   });
 
   
-  app.querySelector("#saveProfileDraftBtn")?.addEventListener("click", () => {
+  app.querySelector("#saveProfileDraftBtn")?.addEventListener("click", async () => {
     clearProfileValidationState();
     const updatedOnboardingDetails = { ...employee.onboardingDetails };
     app.querySelectorAll("[data-profile-detail-key]").forEach((element) => {
@@ -4056,16 +4056,38 @@ function bindEmployeeEvents() {
       showModalMessage("Basic fields missing", "Please fill all basic details up to Aadhar No. to save as draft.");
       return;
     }
+    
+    // Process attachments for draft save as well
+    const nextAttachments = { ...employee.attachments };
+    const fileInputs = Array.from(app.querySelectorAll("[data-attachment-key]"));
+    for (const input of fileInputs) {
+      const file = input.files?.[0];
+      if (file) {
+        try {
+          const savedFileId = await uploadAttachment(file);
+          nextAttachments[input.dataset.attachmentKey] = { 
+            fileName: file.name, 
+            savedFileId, 
+            uploadedAt: `${todayDdMmYyyy()} ${formatTime()}` 
+          };
+        } catch (e) {
+          showModalMessage("Upload failed", `Failed to upload ${file.name}: ${e.message}`);
+          return;
+        }
+      }
+    }
+
     const updatedEmployee = {
       ...employee,
       onboardingDetails: updatedOnboardingDetails,
+      attachments: nextAttachments,
       profile: mergeOnboardingIntoProfile(employee, updatedOnboardingDetails),
       hiring: { ...employee.hiring, profileDraftSaved: true }
     };
     setState({
       employees: state.employees.map((item) => item.id === employee.id ? updatedEmployee : item)
     });
-    showModalMessage("Draft saved", "Your basic details have been saved. You can now access other features, but please remember to fill the complete form.", "success");
+    showModalMessage("Draft saved", "Your basic details and any selected attachments have been saved. You can now access other features, but please remember to fill the complete form.", "success");
   });
   app.querySelector("#profileForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();

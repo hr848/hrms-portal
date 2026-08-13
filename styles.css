@@ -254,6 +254,13 @@ h1 {
   align-items: start;
 }
 
+.stack {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .panel,
 .card {
   border: 1px solid var(--line);
@@ -261,6 +268,8 @@ h1 {
   backdrop-filter: blur(16px);
   box-shadow: var(--shadow);
   border-radius: var(--radius-lg);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .panel {
@@ -986,6 +995,8 @@ h1 {
   border-radius: 20px;
   padding: 16px;
   background: #fbfcff;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .policy-toggle {
