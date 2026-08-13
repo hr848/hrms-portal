@@ -2563,8 +2563,8 @@ function renderAdminLeaveWfhCalendar(activeEmployees) {
   const canGoNext = new Date(`${nextMonth}-01T00:00:00`) <= new Date(`${maxMonth}-01T00:00:00`);
   const events = getAdminLeaveWfhEvents();
   const selectedDate = normalizeActivityDateValue(state.adminLeaveWfhCalendarDate || todayDdMmYyyy());
-  const selectedEmployeeId = state.adminLeaveWfhCalendarEmployeeId || state.selectedLeaveWfhEmployeeId || activeEmployees[0]?.id || "";
-  const selectedEmployee = activeEmployees.find((employee) => employee.id === selectedEmployeeId) || activeEmployees[0] || null;
+  const selectedEmployeeId = state.adminLeaveWfhCalendarEmployeeId || state.selectedLeaveWfhEmployeeId || "";
+  const selectedEmployee = selectedEmployeeId ? activeEmployees.find((employee) => employee.id === selectedEmployeeId) || null : null;
   const selectedDateEvents = events.filter((event) => normalizeActivityDateValue(event.date) === selectedDate);
   const employeeEvents = selectedEmployee ? events.filter((event) => event.employeeId === selectedEmployee.id) : [];
   const employeeById = new Map(activeEmployees.map((employee) => [employee.id, employee]));
