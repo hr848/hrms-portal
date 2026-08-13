@@ -20,6 +20,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $route = $_GET['route'] ?? '';
+if (!$route && php_sapi_name() === 'cli-server') {
+    $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    if (strpos($requestUri, '/api/') === 0) {
+        $route = str_replace('/api/', '', $requestUri);
+    }
+}
 
 function checkApiKey() {
     $headers = getallheaders();
@@ -159,7 +165,13 @@ function handleFeedback() {
             if (!$encoded) continue;
             
             $idx = $index + 1;
-            $base = basename($item['filename'] ?? "attachment-{$idx}");
+            $slNo = $input['slNo'] ?? '';
+            if ($slNo) {
+                $ext_part = pathinfo($item['filename'] ?? 'attachment', PATHINFO_EXTENSION);
+                $base = "feedback_attachment_sl_" . $slNo . "_" . $idx . "." . $ext_part;
+            } else {
+                $base = basename($item['filename'] ?? "attachment-{$idx}");
+            }
             $cleaned = preg_replace('/[^a-zA-Z0-9._-]+/', '_', $base);
             $filename = trim($cleaned, '._') ?: 'attachment';
             

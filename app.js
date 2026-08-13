@@ -385,94 +385,208 @@ function openFeedbackDialog(event) {
     closeFeedbackDialog();
     return;
   }
-  const sender = getFeedbackSenderContext();
-  const pageName = getFeedbackPageName();
-  const widget = document.querySelector("#feedbackWidget") || document.body;
+  
+  const isAdmin = state.session?.role === "admin";
+  let isAddingRow = false; // Will be set in renderContent if needed
+  let isSubmitting = false;
+  
   const box = document.createElement("div");
   box.id = "feedbackPopover";
-  box.className = "panel feedback-popover";
+  box.className = "feedback-modal-overlay";
   box.setAttribute("data-feedback-overlay", "true");
-  box.innerHTML = `
-    <form id="portalFeedbackForm" class="stack feedback-form">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow">Testing feedback</p>
-          <h2>Share feedback</h2>
+  
+  const renderContent = () => {
+    const feedbacks = state.feedbacks || [];
+    if (feedbacks.length === 0 && !isAddingRow && box.innerHTML === "") {
+        isAddingRow = true; // Default to true if no feedbacks on initial load
+    }
+    const nextSlNo = feedbacks.length > 0 ? Math.max(...feedbacks.map(f => parseInt(f.slNo) || 0)) + 1 : 1;
+    return `
+      <div class="feedback-modal-dialog" onclick="event.stopPropagation()">
+        <div class="feedback-modal-header">
+          <h2>Feedback & Suggestions Tracker</h2>
+          <button class="icon-btn" id="feedbackCloseBtn" type="button" aria-label="Close feedback">&times;</button>
         </div>
-        <button class="icon-btn" id="feedbackCloseBtn" type="button" aria-label="Close feedback">&times;</button>
+        <div class="feedback-modal-body">
+          <form id="portalFeedbackForm" style="display: flex; flex-direction: column; height: 100%;">
+            <div class="feedback-table-wrap" style="flex: 1;">
+              <table class="feedback-table">
+                <thead>
+                  <tr>
+                    <th class="col-sl">Sl no</th>
+                    <th class="col-type">Feedback type</th>
+                    <th class="col-sharedby">Shared by</th>
+                    <th class="col-page">Page</th>
+                    <th class="col-message">Message</th>
+                    <th class="col-status">Status</th>
+                    <th class="col-attach">Attachment</th>
+                    <th style="width: 100px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${feedbacks.length === 0 && !isAddingRow ? `<tr><td colspan="8" style="text-align: center; color: var(--muted); padding: 32px;">No feedback items yet. Click below to add one.</td></tr>` : 
+                    feedbacks.map((fb, idx) => `
+                    <tr>
+                      <td>${escapeHtml(fb.slNo)}</td>
+                      <td>${escapeHtml(fb.type)}</td>
+                      <td>${escapeHtml(fb.sender?.name || (typeof fb.sender === 'string' ? fb.sender : '-'))}</td>
+                      <td>${escapeHtml(fb.pageName || '-')}</td>
+                      <td style="white-space: pre-wrap;">${escapeHtml(fb.message)}</td>
+                      <td>
+                        ${isAdmin ? `
+                          <select class="feedback-status-select" data-index="${idx}" style="padding: 6px; border-radius: 4px; border: 1px solid var(--line); width: 100%; border: none; background: transparent;">
+                            <option value="Pending" ${fb.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                            <option value="WIP" ${fb.status === 'WIP' ? 'selected' : ''}>WIP</option>
+                            <option value="Fixed" ${fb.status === 'Fixed' ? 'selected' : ''}>Fixed</option>
+                          </select>
+                        ` : `<span class="pill ${fb.status === 'Fixed' ? 'success' : fb.status === 'WIP' ? 'warning' : ''}">${escapeHtml(fb.status || 'Pending')}</span>`}
+                      </td>
+                      <td>
+                        ${fb.attachments && fb.attachments.length > 0 ? 
+                          `<a href="feedback-attachments/${escapeHtml(fb.attachments[0])}" target="_blank" download style="color: #2563eb; text-decoration: underline;">View</a>` : 
+                          '<span class="muted">-</span>'}
+                      </td>
+                      <td><span class="muted">-</span></td>
+                    </tr>
+                  `).join('')}
+                  ${isAddingRow ? `
+                    <tr style="background: #f8fafc;">
+                      <td style="font-weight: 600;">${nextSlNo}</td>
+                      <td>
+                        <select id="feedbackType" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--line);" ${isSubmitting ? 'disabled' : ''}>
+                          <option value="Bug">Bug</option>
+                          <option value="Suggestion">Suggestion</option>
+                          <option value="Improvement">Improvement</option>
+                          <option value="Confusion">Confusion</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </td>
+                      <td style="color: var(--muted); font-size: 0.9rem;">${escapeHtml(getFeedbackSenderContext().name)}</td>
+                      <td style="color: var(--muted); font-size: 0.9rem;">${escapeHtml(getFeedbackPageName())}</td>
+                      <td>
+                        <textarea id="feedbackMessage" rows="2" placeholder="Write feedback here..." style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--line); resize: vertical;" required ${isSubmitting ? 'disabled' : ''}></textarea>
+                      </td>
+                      <td>
+                        ${isAdmin ? `
+                          <select id="newFeedbackStatus" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--line);" ${isSubmitting ? 'disabled' : ''}>
+                            <option value="Pending">Pending</option>
+                            <option value="WIP">WIP</option>
+                            <option value="Fixed">Fixed</option>
+                          </select>
+                        ` : `<span class="pill">Pending</span><input type="hidden" id="newFeedbackStatus" value="Pending" />`}
+                      </td>
+                      <td>
+                        <input id="feedbackAttachments" type="file" style="max-width: 200px; font-size: 0.85rem;" ${isSubmitting ? 'disabled' : ''} />
+                      </td>
+                      <td>
+                        <button class="primary-btn" id="submitFeedbackBtn" type="submit" style="padding: 6px 12px; font-size: 0.9rem;" ${isSubmitting ? 'disabled' : ''}>
+                          ${isSubmitting ? 'Saving...' : 'Submit'}
+                        </button>
+                      </td>
+                    </tr>
+                  ` : ''}
+                </tbody>
+              </table>
+            </div>
+            ${!isAddingRow ? `<div style="margin-top: 14px;"><button class="secondary-btn" id="addNewFeedbackRowBtn" type="button">+ Add new row</button></div>` : ''}
+          </form>
+        </div>
       </div>
-      <p class="helper">This temporary box saves feedback into the project folder for developer review.</p>
-      <div class="feedback-meta">
-        <span class="pill">Sender: ${escapeHtml(sender.name)}</span>
-        <span class="pill">Page: ${escapeHtml(pageName)}</span>
-      </div>
-      <div class="field">
-        <label for="feedbackType">Feedback type</label>
-        <select id="feedbackType">
-          <option value="Bug">Bug</option>
-          <option value="Suggestion">Suggestion</option>
-          <option value="Improvement">Improvement</option>
-          <option value="Confusion">Confusion</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="feedbackMessage">Message *</label>
-        <textarea id="feedbackMessage" rows="5" placeholder="Write what should be improved, fixed, or clarified." required></textarea>
-      </div>
-      <div class="field">
-        <label for="feedbackAttachments">Attachments</label>
-        <input id="feedbackAttachments" type="file" multiple />
-        <small class="helper">Optional. Screenshots or documents up to 5 MB each. The log will show the saved file path.</small>
-      </div>
-      <div class="actions">
-        <button class="secondary-btn" id="feedbackCancelBtn" type="button">Cancel</button>
-        <button class="primary-btn" type="submit">Submit feedback</button>
-      </div>
-    </form>`;
-  widget.appendChild(box);
-
-  let outsideClickHandler;
-  const close = () => {
-    if (outsideClickHandler) document.removeEventListener("pointerdown", outsideClickHandler);
-    closeFeedbackDialog();
+    `;
   };
-  outsideClickHandler = (outsideEvent) => {
-    const trigger = document.querySelector("#feedbackTrigger");
-    if (!box.contains(outsideEvent.target) && !trigger?.contains(outsideEvent.target)) close();
+  
+  const reRender = () => {
+    box.innerHTML = renderContent();
+    bindEvents();
   };
-  setTimeout(() => document.addEventListener("pointerdown", outsideClickHandler), 0);
-
-  box.querySelector("#feedbackCloseBtn")?.addEventListener("click", close);
-  box.querySelector("#feedbackCancelBtn")?.addEventListener("click", close);
-  box.querySelector("#portalFeedbackForm")?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const message = box.querySelector("#feedbackMessage")?.value.trim() || "";
-    if (!message) {
-      showModalMessage("Feedback message missing", "Please write your feedback before submitting.");
-      return;
-    }
-    try {
-      const attachments = await readFeedbackAttachments(box.querySelector("#feedbackAttachments"));
-      const response = await fetch(FEEDBACK_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sender,
-          pageName,
-          feedbackType: box.querySelector("#feedbackType")?.value || "Other",
-          message,
-          attachments
-        })
+  
+  const bindEvents = () => {
+    box.querySelector("#feedbackCloseBtn")?.addEventListener("click", closeFeedbackDialog);
+    
+    box.querySelector("#addNewFeedbackRowBtn")?.addEventListener("click", () => {
+      isAddingRow = true;
+      reRender();
+      setTimeout(() => box.querySelector("#feedbackMessage")?.focus(), 0);
+    });
+    
+    // Status update (Admin only)
+    if (isAdmin) {
+      box.querySelectorAll(".feedback-status-select").forEach(select => {
+        select.addEventListener("change", (e) => {
+          const idx = parseInt(e.target.getAttribute("data-index"), 10);
+          if (!state.feedbacks) state.feedbacks = [];
+          if (state.feedbacks[idx]) {
+            state.feedbacks[idx].status = e.target.value;
+            scheduleRemoteStateSave();
+            showModalMessage("Status updated", "The feedback status has been updated successfully.", "success", true);
+          }
+        });
       });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || "Feedback could not be saved.");
-      close();
-      showModalMessage("Feedback saved", "Thank you. The feedback was written to the developer feedback log.", "success", true);
-    } catch (error) {
-      showModalMessage("Feedback save failed", error.message || "The feedback could not be written to the project folder.");
     }
-  });
+
+    // Submit new feedback
+    box.querySelector("#portalFeedbackForm")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!isAddingRow || isSubmitting) return;
+      
+      const message = box.querySelector("#feedbackMessage")?.value.trim() || "";
+      if (!message) {
+        showModalMessage("Feedback message missing", "Please write your feedback before submitting.");
+        return;
+      }
+      
+      isSubmitting = true;
+      
+      // Instead of fully re-rendering and detaching the DOM element (which cancels fetch in some browsers), just disable buttons.
+      const submitBtn = box.querySelector("#submitFeedbackBtn");
+      if (submitBtn) { submitBtn.textContent = "Saving..."; submitBtn.disabled = true; }
+      
+      try {
+        if (!state.feedbacks) state.feedbacks = [];
+        const nextSlNo = state.feedbacks.length > 0 ? Math.max(...state.feedbacks.map(f => parseInt(f.slNo) || 0)) + 1 : 1;
+        
+        const attachments = await readFeedbackAttachments(box.querySelector("#feedbackAttachments"));
+        const response = await fetch(FEEDBACK_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slNo: nextSlNo,
+            sender: getFeedbackSenderContext(),
+            pageName: getFeedbackPageName(),
+            feedbackType: box.querySelector("#feedbackType")?.value || "Other",
+            message,
+            attachments
+          })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Feedback could not be saved.");
+        
+        state.feedbacks.push({
+          slNo: nextSlNo,
+          type: box.querySelector("#feedbackType")?.value || "Other",
+          sender: getFeedbackSenderContext(),
+          pageName: getFeedbackPageName(),
+          message: message,
+          status: box.querySelector("#newFeedbackStatus")?.value || "Pending",
+          attachments: result.savedAttachments || []
+        });
+        
+        scheduleRemoteStateSave();
+        
+        isAddingRow = false;
+        isSubmitting = false;
+        reRender();
+        showModalMessage("Feedback saved", "Thank you. Your feedback has been added to the tracker.", "success", true);
+      } catch (error) {
+        isSubmitting = false;
+        reRender();
+        showModalMessage("Feedback save failed", error.message || "The feedback could not be written to the server.");
+      }
+    });
+  };
+  
+  reRender();
+  document.body.appendChild(box);
 }
 function getCurrentEmployee() { return state.session?.role === "employee" ? state.employees.find((employee) => employee.email === state.session.email) || null : null; }
 function getSelectedEmployee() { return state.employees.find((employee) => employee.id === state.selectedEmployeeId) || null; }
@@ -1650,10 +1764,15 @@ function render() {
     return;
   }
   if (!state.session) {
-    app.innerHTML = renderLogin();
-    enhancePasswordFields(app);
-    bindLoginEvents();
-    renderFeedbackWidget();
+    if (state.activeAuthView === "forgotPassword") {
+      app.innerHTML = renderForgotPassword();
+      enhancePasswordFields(app);
+      bindForgotPasswordEvents();
+    } else {
+      app.innerHTML = renderLogin();
+      enhancePasswordFields(app);
+      bindLoginEvents();
+    }
     return;
   }
   app.innerHTML = state.session.role === "admin" ? renderAdminDashboard() : renderEmployeeDashboard();
@@ -1845,12 +1964,23 @@ function renderLogin() {
   return `<section class="login-layout"><div class="panel"><p class="eyebrow">Welcome</p><h2>Choose your portal access</h2><p class="muted">Admins can manage employees, attendance, activity templates, and onboarding imports. Employees can accept offers, complete onboarding, upload the fixed DOCX form, and use the portal.</p><div class="login-switch"><button class="tab-btn ${state.selectedLogin === "admin" ? "active" : ""}" data-login-type="admin" type="button">Admin Login</button><button class="tab-btn ${state.selectedLogin === "employee" ? "active" : ""}" data-login-type="employee" type="button">Employee Login</button></div>${state.selectedLogin === "admin" ? renderAdminLoginForm() : renderEmployeeLoginForm()}<div class="ticket-entry-card"><p class="eyebrow">Support desk</p><h3>Need help?</h3><p class="helper">Raise and track internal support tickets without entering the HRMS console.</p><a class="primary-btn ticket-home-link" href="./index.html?ticket=raise" target="_blank" rel="noopener">Raise a Ticket</a></div></div><div class="panel"><div class="section-header"><div><p class="eyebrow">Prototype coverage</p><h2>Recovered workspace</h2></div><span class="pill success">Local data active</span></div><div class="grid-2"><div class="card"><h3>Offer workflow</h3><p class="muted">Create employees, edit draft emails, send offers, and mark acceptance.</p></div><div class="card"><h3>Employee profile</h3><p class="muted">Employees can review profile details and import the standard DOCX form.</p></div><div class="card"><h3>Attendance</h3><p class="muted">Attendance requires browser location permission before capture.</p></div><div class="card"><h3>Ticketing tool</h3><p class="muted">Dashboard, ticket creation, unresolved tickets, reports, and resources are available from the home page.</p></div></div><div class="card" style="margin-top:16px;"><h3>Demo accounts</h3><div class="stack"><div class="list-item"><div><strong>Admin</strong><span class="muted">admin@hrms.local / ${TEMP_PASSWORD}</span></div><span class="pill warning">Configure email before sending</span></div><div class="list-item"><div><strong>Employee</strong><span class="muted">aarav@company.com / ${TEMP_PASSWORD}</span></div><span class="pill">Email-based login</span></div></div></div></div></section>`;
 }
 function renderAdminLoginForm() { return `<form id="adminLoginForm" class="stack"><div class="field"><label for="adminEmail">Admin email</label><input id="adminEmail" type="email" required /></div><div class="field"><label for="adminPassword">Password</label><input id="adminPassword" type="password" required /></div><button class="primary-btn" type="submit">Enter admin portal</button><button class="link-btn auth-helper-btn" id="adminForgotPasswordBtn" type="button">Forgot password?</button></form>`; }
-function renderEmployeeLoginForm() { return `<form id="employeeLoginForm" class="stack"><div class="field"><label for="employeeEmail">Employee email</label><input id="employeeEmail" type="email" placeholder="aarav@company.com" required /></div><div class="field"><label for="employeePassword">Password</label><input id="employeePassword" type="password" placeholder="${TEMP_PASSWORD}" required /></div><button class="primary-btn" type="submit">Enter employee portal</button><button class="link-btn auth-helper-btn" id="employeeForgotPasswordBtn" type="button">Forgot password?</button></form>`; }
+function renderEmployeeLoginForm() { return `<form id="employeeLoginForm" class="stack"><div class="field"><label for="employeeEmail">Employee email</label><input id="employeeEmail" type="email" required /></div><div class="field"><label for="employeePassword">Password</label><input id="employeePassword" type="password" required /></div><button class="primary-btn" type="submit">Enter employee portal</button><button class="link-btn auth-helper-btn" id="employeeForgotPasswordBtn" type="button">Forgot password?</button></form>`; }
+
+function renderForgotPassword() {
+  return `<section class="login-layout"><div class="panel" style="margin: auto;"><p class="eyebrow">Recovery</p><h2>Reset your password</h2><p class="muted">Enter your registered email address and your new password. Note: Only employee passwords can be reset here.</p>
+  <form id="forgotPasswordForm" class="stack">
+    <div class="field"><label for="fpEmail">Email address</label><input id="fpEmail" type="email" required /></div>
+    <div class="field"><label for="fpNewPassword">New password</label><input id="fpNewPassword" type="password" minlength="6" required /></div>
+    <div class="field"><label for="fpConfirmPassword">Confirm password</label><input id="fpConfirmPassword" type="password" minlength="6" required /></div>
+    <button class="primary-btn" type="submit">Reset password</button>
+    <button class="link-btn auth-helper-btn" id="fpBackBtn" type="button">Back to login</button>
+  </form></div></section>`;
+}
 function renderAdminDashboard() {
   const activeEmployees = state.employees.filter((item) => item.status === "Active").length;
   const totalAttendance = state.employees.reduce((sum, item) => sum + item.attendance.length, 0);
   const totalActivities = state.employees.reduce((sum, item) => sum + item.activities.length, 0);
-  return `<section class="dashboard"><aside class="panel sidebar"><p class="eyebrow">Admin console</p><h2>${escapeHtml(state.adminProfile.name)}</h2><p class="muted">${escapeHtml(state.session?.email || state.adminProfile.email)}</p><nav>${navButton("overview", "Overview")}${navButton("employees", "Employees")}${navButton("employee_grouping", "Employee grouping")}${navButton("attendance", "Attendance")}${externalNavButton("Attendance analytics", "/attendance-analytics/index.html")}${navButton("leave_wfh", "Leave and WFH")}${navButton("holiday", "Holiday")}${navButton("attendance_adjustment", "Attendance adjustment")}${navButton("activity", "Activity template")}${navButton("activity_tracker", "Activity tracker")}${navButton("hiring", "Hiring setup")}${navButton("settings", "Settings")}</nav></aside><div class="content">${renderAdminSection(activeEmployees, totalAttendance, totalActivities)}</div></section>`;
+  return `<section class="dashboard"><aside class="panel sidebar"><p class="eyebrow">Admin console</p><h2>${escapeHtml(state.adminProfile.name)}</h2><p class="muted">${escapeHtml(state.session?.email || state.adminProfile.email)}</p><nav>${navButton("overview", "Overview")}${navButton("employees", "Employees")}${navButton("employee_grouping", "Employee grouping")}${navButton("attendance", "Attendance")}${externalNavButton("Attendance analytics", "/attendance-analytics/index.html")}${navButton("leave_wfh", "Leave and WFH")}${navButton("holiday", "Holiday")}${navButton("attendance_adjustment", "Attendance adjustment")}${navButton("activity", "Activity template")}${navButton("activity_tracker", "Activity tracker")}${navButton("hiring", "Hiring setup")}${navButton("settings", "Settings")}${navButton("guide", "User guide")}</nav></aside><div class="content">${renderAdminSection(activeEmployees, totalAttendance, totalActivities)}</div></section>`;
 }
 function renderAdminActivityTemplateSection() {
   const groupClientOptions = getGroupClientOptions();
@@ -1861,6 +1991,12 @@ function renderAdminSection(activeEmployees, totalAttendance, totalActivities) {
   const selected = getSelectedEmployee();
   const offersPending = state.employees.filter((item) => item.hiring.offerStatus === "sent").length;
   const onboardingPending = state.employees.filter((item) => item.hiring.offerStatus === "accepted" && !item.hiring.onboardingSubmittedAt).length;
+  
+  if (state.activeSection === "guide") {
+    setTimeout(() => renderMarkdownGuide("admin_user_guide.md"), 0);
+    return `<div class="card" id="guideContainer" style="padding: 32px;"><p class="muted">Loading user guide...</p></div>`;
+  }
+
   if (state.activeSection === "overview") return `<div class="section-grid"><div class="card stat"><p class="stat-label">Active employees</p><p class="stat-value">${activeEmployees}</p></div><div class="card stat"><p class="stat-label">Attendance entries</p><p class="stat-value">${totalAttendance}</p></div><div class="card stat"><p class="stat-label">Activity rows</p><p class="stat-value">${totalActivities}</p></div><div class="card wide"><h3>Recent employees</h3><div class="list">${state.employees.map((item) => renderEmployeeDirectoryRow(item, selected?.id)).join("")}</div></div><div class="card tall"><h3>Workflow health</h3><div class="stack"><div class="pill warning">Acceptance pending: ${offersPending}</div><div class="pill">Onboarding pending: ${onboardingPending}</div></div></div></div>`;
   if (state.activeSection === "employees") return `<div class="section-grid"><div class="card wide"><div class="section-header"><div><p class="eyebrow">Offer workflow</p><h2>Send offer</h2></div><span class="pill ${state.emailConfig.configured ? "success" : "warning"}">${state.emailConfig.configured ? "Email configured" : "Email not configured"}</span></div><form id="addEmployeeForm" class="stack"><div class="grid-2"><div class="field"><label for="newEmployeeName">Full name</label><input id="newEmployeeName" required /></div><div class="field"><label for="newEmployeeEmail">Email</label><input id="newEmployeeEmail" type="email" required /></div></div><div class="grid-2"><div class="field"><label for="newEmployeeDept">Department</label><input id="newEmployeeDept" value="Operations" required /></div><div class="field"><label for="newEmployeeRole">Role</label><input id="newEmployeeRole" value="Employee" required /></div></div><div class="grid-2"><div class="field"><label for="newEmployeeCode">Emp id</label><input id="newEmployeeCode" placeholder="EMP-1001" required /></div><div class="field"><label for="newEmployeePassword">Temporary password</label><input id="newEmployeePassword" value="${TEMP_PASSWORD}" required /></div></div><div class="actions"><button class="primary-btn" type="submit">Send offer</button><button class="secondary-btn" type="button" id="addEmployeeOnlyBtn">Add employee</button></div><p class="helper">This action creates the employee record. Send offer will also log the offer-letter email based on the configured template.</p></form></div><div class="card tall"><h3>Hiring summary</h3><div class="kpi-grid" style="grid-template-columns:1fr;"><div class="kpi"><p class="subtle">Total employees</p><p class="value">${state.employees.length}</p></div><div class="kpi"><p class="subtle">Offers awaiting acceptance</p><p class="value">${offersPending}</p></div><div class="kpi"><p class="subtle">Onboarding pending</p><p class="value">${onboardingPending}</p></div></div></div></div>${renderEmployeeDirectory()}`;
   if (state.activeSection === "admin_employee_details" && selected) return `<div class="card">${renderAdminEmployeeDetailsPanel(selected)}</div>`;
@@ -1920,6 +2056,67 @@ function renderAdminEmployeeGroupingConsole() {
   const parentOptions = `<option value="">Top-level group</option>${groupOptions}`;
   return `<div class="stack"><div class="card"><div class="section-header"><div><p class="eyebrow">Employee grouping</p><h2>Create employee groups</h2></div><span class="pill">${state.employeeGroups.length} groups</span></div><form id="employeeGroupCreateForm" class="stack"><div class="grid-2"><div class="field"><label for="newGroupName">Group name</label><input id="newGroupName" placeholder="e.g. Finance Team" required /></div><div class="field"><label for="newGroupParent">Parent group</label><select id="newGroupParent">${parentOptions}</select></div></div><button class="primary-btn" type="submit">Create group</button></form></div><div class="section-grid">${(state.employeeGroups || []).map((group) => renderAdminGroupCard(group)).join("") || emptyState("No employee groups available.")}</div></div>`;
 }
+
+async function renderMarkdownGuide(filename) {
+  const container = document.getElementById("guideContainer");
+  if (!container) return;
+  try {
+    if (!window.marked) {
+      await new Promise((r) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/marked/marked.min.js";
+        s.onload = r;
+        document.head.appendChild(s);
+      });
+    }
+    if (!window.mermaid) {
+      await new Promise((r) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js";
+        s.onload = r;
+        document.head.appendChild(s);
+      });
+      mermaid.initialize({ startOnLoad: false, theme: "neutral" });
+    }
+    
+    const response = await fetch(filename);
+    const text = await response.text();
+    const html = marked.parse(text);
+    
+    container.innerHTML = `<div class="user-guide-content" style="line-height: 1.6; font-size: 15px; color: #334155; padding-bottom: 24px;">${html}</div>`;
+    
+    // Style markdown output
+    container.querySelectorAll('h1, h2, h3').forEach(el => el.style.color = '#0f172a');
+    container.querySelectorAll('h1').forEach(el => el.style.borderBottom = '1px solid #e2e8f0');
+    container.querySelectorAll('h1').forEach(el => el.style.paddingBottom = '8px');
+    container.querySelectorAll('ul').forEach(el => el.style.paddingLeft = '24px');
+    container.querySelectorAll('li').forEach(el => el.style.marginBottom = '6px');
+    
+    // Convert mermaid code blocks
+    container.querySelectorAll('code.language-mermaid').forEach(code => {
+      const pre = code.parentElement;
+      const div = document.createElement('div');
+      div.className = 'mermaid';
+      div.style.background = '#f8fafc';
+      div.style.padding = '16px';
+      div.style.borderRadius = '8px';
+      div.style.marginBottom = '20px';
+      div.style.display = 'flex';
+      div.style.justifyContent = 'center';
+      div.textContent = code.textContent;
+      pre.replaceWith(div);
+    });
+    
+    setTimeout(() => {
+      mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+    }, 100);
+    
+  } catch (err) {
+    console.error("Failed to load user guide:", err);
+    container.innerHTML = `<p class="muted">Failed to load guide. Please make sure you are connected to the internet.</p>`;
+  }
+}
+
 function renderAdminGroupCard(group) {
   const members = getGroupMemberEmployees(group);
   const availableEmployees = state.employees.filter((employee) => !(group.members || []).includes(employee.id));
@@ -1977,7 +2174,7 @@ function renderAdminSubmittedProfileDetails(employee) {
   return `<div class="subtle-card admin-submitted-profile-card"><div class="section-header"><div><p class="eyebrow">Submitted profile</p><h3>Employee-entered profile details</h3></div><span class="pill ${employee.hiring.profileReviewed ? "success" : "warning"}">${employee.hiring.profileReviewed ? "Reviewed and saved" : "Draft / not reviewed"}</span></div><p class="helper">This section shows the complete profile information entered by the employee during onboarding.</p>${renderAdminOnboardingInfoRows(employee)}${educationTable}${previousCompanyTable}${renderAdminAttachmentReviewSection(employee)}</div>`;
 }function renderAdminEmployeeDetailsPanel(employee) {
   const offerContent = buildOfferContent(employee);
-  return `<div class="stack"><div class="section-header"><div><p class="eyebrow">Employee details</p><h2>${escapeHtml(getEmployeeDisplayName(employee))}</h2></div><span class="pill ${employee.status === "Active" ? "success" : "warning"}">${escapeHtml(employee.status)}</span></div><div class="actions">${employee.hiring.offerStatus === "sent" && !employee.hiring.offerAcceptedAt ? '<button class="secondary-btn" type="button" id="markAcceptedBtn">Mark offer accepted</button>' : ""}${employee.hiring.onboardingSubmittedAt && !employee.hiring.profileEditAllowed ? '<button class="secondary-btn" type="button" id="allowProfileEditBtn">Allow profile edits</button>' : ""}</div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Offer letter</p><h3>${employee.hiring.offerStatus === "not_sent" ? "Not sent yet" : employee.hiring.offerStatus === "sent" ? "Awaiting acceptance" : "Accepted"}</h3></div><span class="pill">${employee.hiring.offerSentAt ? `Sent ${escapeHtml(employee.hiring.offerSentAt)}` : "Draft only"}</span></div><form id="offerDraftForm" class="stack"><div class="field"><label for="offerDraftSubject">Email subject</label><input id="offerDraftSubject" value="${escapeHtml(offerContent.subject)}" required /></div><div class="field"><label for="offerDraftBody">Email body</label><textarea id="offerDraftBody" required>${escapeHtml(offerContent.body)}</textarea></div><div class="actions"><button class="secondary-btn" type="button" id="saveOfferDraftBtn">Save draft</button><button class="primary-btn" type="submit">${employee.hiring.offerSentAt ? "Resend offer" : "Send offer"}</button></div></form></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Account security</p><h3>Reset employee password</h3></div><span class="pill warning">Manual reset</span></div><form id="adminEmployeePasswordResetForm" class="stack"><div class="grid-2"><div class="field"><label for="adminEmployeeNewPassword">New temporary password</label><input id="adminEmployeeNewPassword" type="password" minlength="6" value="${TEMP_PASSWORD}" required /></div><div class="field"><label for="adminEmployeeConfirmPassword">Confirm temporary password</label><input id="adminEmployeeConfirmPassword" type="password" minlength="6" value="${TEMP_PASSWORD}" required /></div></div><button class="secondary-btn" type="submit">Reset employee password</button><p class="helper">Until email integration is enabled, admin can set a temporary password and share it with the employee through the approved company channel.</p></form></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Import onboarding DOCX</p><h3>Existing employee form upload</h3></div><span class="pill">Office Use Only ignored</span></div><form id="employeeDocImportForm" class="stack"><div class="field"><label for="employeeDocFile">DOCX file</label><input id="employeeDocFile" type="file" accept=".doc,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required /></div><button class="secondary-btn" type="submit">Extract employee details</button><p class="helper">Upload the standard Avanzar employee details document. The portal will extract the same layout for every employee and skip the Office Use Only section.</p></form></div><form id="employeeDetailForm" class="stack"><div class="grid-2"><div class="field"><label for="detailFullName">Full name</label><input id="detailFullName" value="${escapeHtml(employee.fullName)}" required /></div><div class="field"><label for="detailEmail">Email</label><input id="detailEmail" type="email" value="${escapeHtml(employee.email)}" required /></div></div><div class="grid-2"><div class="field"><label for="detailDepartment">Department</label><input id="detailDepartment" value="${escapeHtml(employee.department)}" required /></div><div class="field"><label for="detailRole">Role</label><input id="detailRole" value="${escapeHtml(employee.role)}" required /></div></div><div class="grid-2"><div class="field"><label for="detailSignupCode">Emp id</label><input id="detailSignupCode" value="${escapeHtml(employee.signupCode)}" required /></div><div class="field"><label for="detailPassword">Password</label><input id="detailPassword" type="password" value="${escapeHtml(employee.credentials.password)}" required /></div></div><div class="grid-2"><div class="field"><label for="detailPhone">Phone</label><input id="detailPhone" value="${escapeHtml(employee.profile.phone || "")}" /></div><div class="field"><label for="detailDesignation">Designation</label><input id="detailDesignation" value="${escapeHtml(employee.profile.designation || "")}" /></div></div><div class="grid-2"><div class="field"><label for="detailLocation">Base location</label><input id="detailLocation" value="${escapeHtml(employee.profile.location || "")}" /></div><div class="field"><label for="detailStatus">Status</label><select id="detailStatus"><option ${employee.status === "Pending" ? "selected" : ""}>Pending</option><option ${employee.status === "Accepted" ? "selected" : ""}>Accepted</option><option ${employee.status === "Active" ? "selected" : ""}>Active</option><option ${employee.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div><div class="field"><label for="detailBio">Bio</label><textarea id="detailBio">${escapeHtml(employee.profile.bio || "")}</textarea></div><button class="primary-btn" type="submit">Save employee details</button></form>${renderAdminSubmittedProfileDetails(employee)}</div>`;
+  return `<div class="stack"><div class="section-header"><div><p class="eyebrow">Employee details</p><h2>${escapeHtml(getEmployeeDisplayName(employee))}</h2></div><span class="pill ${employee.status === "Active" ? "success" : "warning"}">${escapeHtml(employee.status)}</span></div><div class="actions">${employee.hiring.offerStatus === "sent" && !employee.hiring.offerAcceptedAt ? '<button class="secondary-btn" type="button" id="markAcceptedBtn">Mark offer accepted</button>' : ""}${employee.hiring.onboardingSubmittedAt && !employee.hiring.profileEditAllowed ? '<button class="secondary-btn" type="button" id="allowProfileEditBtn">Allow profile edits</button>' : ""}</div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Offer letter</p><h3>${employee.hiring.offerStatus === "not_sent" ? "Not sent yet" : employee.hiring.offerStatus === "sent" ? "Awaiting acceptance" : "Accepted"}</h3></div><span class="pill">${employee.hiring.offerSentAt ? `Sent ${escapeHtml(employee.hiring.offerSentAt)}` : "Draft only"}</span></div><form id="offerDraftForm" class="stack"><div class="field"><label for="offerDraftSubject">Email subject</label><input id="offerDraftSubject" value="${escapeHtml(offerContent.subject)}" required /></div><div class="field"><label for="offerDraftBody">Email body</label><textarea id="offerDraftBody" required>${escapeHtml(offerContent.body)}</textarea></div><div class="actions"><button class="secondary-btn" type="button" id="saveOfferDraftBtn">Save draft</button><button class="primary-btn" type="submit">${employee.hiring.offerSentAt ? "Resend offer" : "Send offer"}</button></div></form></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Account security</p><h3>Reset employee password</h3></div><span class="pill warning">Manual reset</span></div><form id="adminEmployeePasswordResetForm" class="stack"><div class="grid-2"><div class="field"><label for="adminEmployeeNewPassword">Employee's current password</label><input id="adminEmployeeNewPassword" type="password" minlength="6" value="${escapeHtml(employee.credentials.password)}" required /></div><div class="field"><label for="adminEmployeeConfirmPassword">Assign new password</label><input id="adminEmployeeConfirmPassword" type="password" minlength="6" value="${escapeHtml(employee.credentials.password)}" required /></div></div><button class="secondary-btn" type="submit">Reset employee password</button><p class="helper">Until email integration is enabled, admin can set a temporary password and share it with the employee through the approved company channel.</p></form></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Import onboarding DOCX</p><h3>Existing employee form upload</h3></div><span class="pill">Office Use Only ignored</span></div><form id="employeeDocImportForm" class="stack"><div class="field"><label for="employeeDocFile">DOCX file</label><input id="employeeDocFile" type="file" accept=".doc,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required /></div><button class="secondary-btn" type="submit">Extract employee details</button><p class="helper">Upload the standard Avanzar employee details document. The portal will extract the same layout for every employee and skip the Office Use Only section.</p></form></div><form id="employeeDetailForm" class="stack"><div class="grid-2"><div class="field"><label for="detailFullName">Full name</label><input id="detailFullName" value="${escapeHtml(employee.fullName)}" required /></div><div class="field"><label for="detailEmail">Email</label><input id="detailEmail" type="email" value="${escapeHtml(employee.email)}" required /></div></div><div class="grid-2"><div class="field"><label for="detailDepartment">Department</label><input id="detailDepartment" value="${escapeHtml(employee.department)}" required /></div><div class="field"><label for="detailRole">Role</label><input id="detailRole" value="${escapeHtml(employee.role)}" required /></div></div><div class="grid-2"><div class="field"><label for="detailSignupCode">Emp id</label><input id="detailSignupCode" value="${escapeHtml(employee.signupCode)}" required /></div><div class="field"><label for="detailPassword">Password</label><input id="detailPassword" type="password" value="${escapeHtml(employee.credentials.password)}" required /></div></div><div class="grid-2"><div class="field"><label for="detailPhone">Phone</label><input id="detailPhone" value="${escapeHtml(employee.profile.phone || "")}" /></div><div class="field"><label for="detailDesignation">Designation</label><input id="detailDesignation" value="${escapeHtml(employee.profile.designation || "")}" /></div></div><div class="grid-2"><div class="field"><label for="detailLocation">Base location</label><input id="detailLocation" value="${escapeHtml(employee.profile.location || "")}" /></div><div class="field"><label for="detailStatus">Status</label><select id="detailStatus"><option ${employee.status === "Pending" ? "selected" : ""}>Pending</option><option ${employee.status === "Accepted" ? "selected" : ""}>Accepted</option><option ${employee.status === "Active" ? "selected" : ""}>Active</option><option ${employee.status === "Inactive" ? "selected" : ""}>Inactive</option></select></div></div><div class="field"><label for="detailBio">Bio</label><textarea id="detailBio">${escapeHtml(employee.profile.bio || "")}</textarea></div><button class="primary-btn" type="submit">Save employee details</button></form>${renderAdminSubmittedProfileDetails(employee)}</div>`;
 }
 function renderAdminOnboardingPanel(employee) {
   return `<div class="stack"><div class="section-header"><div><p class="eyebrow">Onboarded</p><h2>${escapeHtml(getEmployeeDisplayName(employee))}</h2></div><span class="pill ${employee.hiring.onboardingSubmittedAt ? "success" : "warning"}">${employee.hiring.onboardingSubmittedAt ? "Submitted" : "Pending"}</span></div><div class="subtle-card"><div class="section-header"><div><p class="eyebrow">Onboarding details</p><h3>${employee.hiring.onboardingSubmittedAt ? "Submitted details" : "Waiting for submission"}</h3></div></div><div class="list">${renderOnboardingSummary(employee)}</div></div></div>`;
@@ -1991,19 +2188,23 @@ function getAdminActivityRows() {
 function renderAdminActivityConsole() {
   const columns = getAdminActivityColumns();
   const rows = getAdminActivityRows();
-  return `<div class="stack"><div class="subtle-card activity-admin-sheet-card"><div class="section-header"><div><p class="eyebrow">Activity tracker</p><h2>All employee activity logs</h2></div><div class="actions"><button class="secondary-btn" type="button" id="downloadFilteredActivityExcelBtn">Download filtered Excel</button><button class="secondary-btn" type="button" id="downloadAllActivityExcelBtn">Download all Excel</button></div></div><p class="helper">This tracker shows employee activity rows in an Excel-like sheet. Use the header filters to narrow results, then download either the filtered view or the full log for everyone.</p><div class="admin-activity-table-wrap"><table class="admin-activity-table" id="adminActivityTable"><thead><tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr><tr>${columns.map((column) => `<th class="admin-activity-filter-cell"><input data-admin-activity-filter="${column.key}" placeholder="Filter ${escapeHtml(column.label)}" /></th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr data-admin-activity-row="true">${columns.map((column) => `<td data-admin-col-key="${column.key}" data-filter-value="${escapeHtml(String(row[column.key] || "").toLowerCase())}">${escapeHtml(row[column.key] || "-")}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${columns.length}">No activity rows available.</td></tr>`}</tbody></table></div></div></div>`;
+  return `<div class="stack"><div class="subtle-card activity-admin-sheet-card"><div class="section-header"><div><p class="eyebrow">Activity tracker</p><h2>All employee activity logs</h2></div><div class="actions"><button class="secondary-btn" type="button" id="downloadFilteredActivityExcelBtn">Download filtered Excel</button><button class="secondary-btn" type="button" id="downloadAllActivityExcelBtn">Download all Excel</button></div></div><p class="helper">This tracker shows employee activity rows in an Excel-like sheet. Use the header filters to narrow results, then download either the filtered view or the full log for everyone.</p><div class="admin-activity-table-wrap"><table class="admin-activity-table" id="adminActivityTable"><thead><tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr><tr>${columns.map((column) => `<th class="admin-activity-filter-cell"><input data-admin-activity-filter="${column.key}" placeholder="Filter ${escapeHtml(column.label)}" /></th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr data-admin-activity-row="true">${columns.map((column) => `<td data-admin-col-key="${column.key}" data-filter-value="${escapeHtml(String(row[column.key] || "").toLowerCase())}">${escapeHtml(row[column.key] || "-")}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div></div>`;
 }
 function renderEmployeeDashboard() {
   const employee = getCurrentEmployee();
   const attendanceCount = employee?.attendance.length || 0;
   const activityCount = employee?.activities.length || 0;
-  return `<section class="dashboard"><aside class="panel sidebar"><p class="eyebrow">Employee console</p><h2>${escapeHtml(getEmployeeDisplayName(employee) || "Employee")}</h2><p class="muted">${escapeHtml(employee?.department || "Department")} | ${escapeHtml(employee?.role || "Role")}</p><nav>${navButton("overview", "Overview")}${navButton("profile", "Profile")}${navButton("groups", "Group")}${navButton("attendance", "Attendance")}${navButton("leave_wfh", "Leave and WFH")}${navButton("holiday", "Holiday")}${navButton("activity", "Activity log")}</nav></aside><div class="content">${renderEmployeeSection(employee, attendanceCount, activityCount)}</div></section>`;
+  return `<section class="dashboard"><aside class="panel sidebar"><p class="eyebrow">Employee console</p><h2>${escapeHtml(getEmployeeDisplayName(employee) || "Employee")}</h2><p class="muted">${escapeHtml(employee?.department || "Department")} | ${escapeHtml(employee?.role || "Role")}</p><nav>${navButton("overview", "Overview")}${navButton("profile", "Profile")}${navButton("groups", "Group")}${navButton("attendance", "Attendance")}${navButton("leave_wfh", "Leave and WFH")}${navButton("holiday", "Holiday")}${navButton("activity", "Activity log")}${navButton("guide", "User guide")}</nav></aside><div class="content">${renderEmployeeSection(employee, attendanceCount, activityCount)}</div></section>`;
 }
 function renderEmployeeSection(employee, attendanceCount, activityCount) {
   if (!employee) return `<div class="card"><h2>Employee not found</h2></div>`;
   if (employee.hiring.offerStatus === "not_sent") return `<div class="card"><p class="eyebrow">Offer pending</p><h2>Your access is not active yet</h2><p class="muted">The admin has not sent your offer letter yet. Once the offer is sent, you can log in and continue onboarding.</p></div>`;
   if (employee.hiring.offerStatus === "sent" && !employee.hiring.offerAcceptedAt) { const offerContent = buildOfferContent(employee); return `<div class="card"><div class="section-header"><div><p class="eyebrow">Offer acceptance</p><h2>Review your offer letter</h2></div><span class="pill warning">Awaiting acceptance</span></div><div class="template-preview"><strong>${escapeHtml(offerContent.subject)}</strong><pre class="message-preview">${escapeHtml(offerContent.body)}</pre></div><div class="actions" style="margin-top:12px;"><button class="primary-btn" id="acceptOfferBtn" type="button">Accept offer</button></div><p class="helper">Once accepted, the portal will open your employee detail form so you can complete onboarding.</p></div>`; }
   
+  if (state.activeSection === "guide") {
+    setTimeout(() => renderMarkdownGuide("employee_user_guide.md"), 0);
+    return `<div class="card" id="guideContainer" style="padding: 32px;"><p class="muted">Loading user guide...</p></div>`;
+  }
   if (!employee.hiring.onboardingSubmittedAt && !employee.hiring.profileDraftSaved) return renderEmployeeProfile(employee);
   
   let prefixHTML = "";
@@ -2762,8 +2963,33 @@ function bindLoginEvents() {
     setState({ session: { role: "employee", email: employee.email }, activeSection: employee.hiring.onboardingSubmittedAt ? "overview" : "profile" });
   });
 
-  app.querySelector("#adminForgotPasswordBtn")?.addEventListener("click", () => showModalMessage("Admin password reset", getPasswordRecoveryMessage("admin")));
-  app.querySelector("#employeeForgotPasswordBtn")?.addEventListener("click", () => showModalMessage("Employee password reset", getPasswordRecoveryMessage("employee")));
+  app.querySelector("#adminForgotPasswordBtn")?.addEventListener("click", () => setState({ activeAuthView: "forgotPassword" }));
+  app.querySelector("#employeeForgotPasswordBtn")?.addEventListener("click", () => setState({ activeAuthView: "forgotPassword" }));
+}
+
+function bindForgotPasswordEvents() {
+  app.querySelector("#fpBackBtn")?.addEventListener("click", () => setState({ activeAuthView: "login" }));
+  app.querySelector("#forgotPasswordForm")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const email = app.querySelector("#fpEmail")?.value.trim().toLowerCase();
+    const password = app.querySelector("#fpNewPassword")?.value.trim() || "";
+    const confirmPassword = app.querySelector("#fpConfirmPassword")?.value.trim() || "";
+    
+    if (password !== confirmPassword) {
+      showModalMessage("Password mismatch", "The new password and confirmation do not match.");
+      return;
+    }
+    
+    const employee = state.employees.find((item) => item.email.toLowerCase() === email);
+    if (!employee) {
+      showModalMessage("Account not found", "No employee is registered with this email address.");
+      return;
+    }
+    
+    const updatedEmployee = { ...employee, credentials: { ...(employee.credentials || {}), password } };
+    setState({ employees: state.employees.map((item) => item.id === employee.id ? updatedEmployee : item), activeAuthView: "login" });
+    showModalMessage("Password reset successful", "Your password has been successfully updated. You can now log in.", "success");
+  });
 }
 
 function nextEmployeeId() {
@@ -3156,18 +3382,13 @@ function bindAdminEvents() {
 
   app.querySelector("#adminEmployeePasswordResetForm")?.addEventListener("submit", (event) => {
     event.preventDefault();
-    const password = app.querySelector("#adminEmployeeNewPassword")?.value.trim() || "";
-    const confirmPassword = app.querySelector("#adminEmployeeConfirmPassword")?.value.trim() || "";
-    if (password.length < 6) {
-      showModalMessage("Password too short", "Please enter a temporary password with at least 6 characters.");
+    const newPassword = app.querySelector("#adminEmployeeConfirmPassword")?.value.trim() || "";
+    if (newPassword.length < 6) {
+      showModalMessage("Password too short", "Please enter a new password with at least 6 characters.");
       return;
     }
-    if (password !== confirmPassword) {
-      showModalMessage("Password mismatch", "The temporary password and confirmation do not match.");
-      return;
-    }
-    updateSelectedEmployee((employee) => ({ ...employee, credentials: { ...(employee.credentials || {}), password } }));
-    showModalMessage("Employee password reset", "The employee temporary password has been updated. Share it through the approved company channel until email reset is enabled.", "success");
+    updateSelectedEmployee((employee) => ({ ...employee, credentials: { ...(employee.credentials || {}), password: newPassword } }));
+    showModalMessage("Employee password reset", "The employee's password has been updated successfully.", "success");
   });
 
   app.querySelector("#saveOfferDraftBtn")?.addEventListener("click", () => {
