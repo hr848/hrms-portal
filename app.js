@@ -4248,36 +4248,29 @@ function bindEmployeeEvents() {
   app.querySelector("#profile_detail_experienceType")?.addEventListener("change", syncExperienceConditionalFields);
   app.querySelector("#profile_detail_pfAvailable")?.addEventListener("change", syncExperienceConditionalFields);
 
-  syncSameAsPresentAddress(false);
+syncSameAsPresentAddress(false);
   syncExperienceConditionalFields();
 
 
   const syncWfhRequestDraft = () => {
-    setState({
-      wfhRequestDraft: {
-        date: normalizeActivityDateValue(app.querySelector("#wfhRequestDate")?.value.trim() || todayDdMmYyyy()),
-        reason: app.querySelector("#wfhReason")?.value || ""
-      },
-      activeSection: "leave_wfh"
-    });
+    state.wfhRequestDraft = {
+      date: app.querySelector("#wfhRequestDate")?.value || "",
+      reason: app.querySelector("#wfhReason")?.value || ""
+    };
+    saveState();
   };
   app.querySelector("#wfhRequestDate")?.addEventListener("change", syncWfhRequestDraft);
   app.querySelector("#wfhRequestDate")?.addEventListener("blur", syncWfhRequestDraft);
   app.querySelector("#wfhReason")?.addEventListener("change", syncWfhRequestDraft);
 
   const syncLeaveRequestDraft = () => {
-    const fromDate = normalizeActivityDateValue(app.querySelector("#leaveRequestFromDate")?.value.trim() || todayDdMmYyyy());
-    const toDate = normalizeActivityDateValue(app.querySelector("#leaveRequestToDate")?.value.trim() || fromDate);
-    setState({
-      leaveRequestDraft: {
-        date: fromDate,
-        fromDate,
-        toDate,
-        type: app.querySelector("#leaveRequestType")?.value || "privilege",
-        reason: app.querySelector("#leaveReason")?.value || ""
-      },
-      activeSection: "leave_wfh"
-    });
+    state.leaveRequestDraft = {
+      type: app.querySelector("#leaveRequestType")?.value || "privilege",
+      fromDate: app.querySelector("#leaveRequestFromDate")?.value || "",
+      toDate: app.querySelector("#leaveRequestToDate")?.value || "",
+      reason: app.querySelector("#leaveReason")?.value || ""
+    };
+    saveState();
   };
   app.querySelector("#leaveRequestFromDate")?.addEventListener("change", syncLeaveRequestDraft);
   app.querySelector("#leaveRequestFromDate")?.addEventListener("blur", syncLeaveRequestDraft);
@@ -4359,7 +4352,7 @@ function bindEmployeeEvents() {
   app.querySelector("#downloadTeamLeaveWfhExcelBtn")?.addEventListener("click", () => downloadEmployeeGroupLeaveWfhExcel(employee));
   app.querySelector("#clearLeaveWfhSelectionBtn")?.addEventListener("click", () => setState({ leaveWfhSelectedDates: [], activeSection: "leave_wfh" }));
   app.querySelector("#leaveWfhCalendarRequestType")?.addEventListener("change", (event) => setState({ leaveWfhRequestType: event.target.value, activeSection: "leave_wfh" }));
-  app.querySelector("#leaveWfhCalendarReason")?.addEventListener("change", (event) => setState({ leaveWfhRequestReason: event.target.value, activeSection: "leave_wfh" }));
+  app.querySelector("#leaveWfhCalendarReason")?.addEventListener("change", (event) => { state.leaveWfhRequestReason = event.target.value; saveState(); });
   app.querySelector("#leaveWfhCalendarRequestForm")?.addEventListener("submit", (event) => {
     event.preventDefault();
     const selectedDates = (state.leaveWfhSelectedDates || []).filter((date) => isLeaveWfhDateSelectable(employee, date).selectable).sort((a, b) => parseDateSortValue(a) - parseDateSortValue(b));
@@ -4609,17 +4602,15 @@ function bindEmployeeEvents() {
   });
 
   const syncAttendanceClaimDraft = () => {
-    setState({
-      attendanceClaimDraft: {
-        attendanceDate: normalizeActivityDateValue(app.querySelector("#claimAttendanceDate")?.value.trim() || todayDdMmYyyy()),
-        claimType: app.querySelector("#claimType")?.value || "",
-        proposedTime: app.querySelector("#claimProposedTime")?.value || "",
-        proposedCheckInTime: app.querySelector("#claimCheckInTime")?.value || "",
-        proposedCheckOutTime: app.querySelector("#claimCheckOutTime")?.value || "",
-        reason: app.querySelector("#claimReason")?.value || ""
-      },
-      activeSection: "attendance"
-    });
+    state.attendanceClaimDraft = {
+      attendanceDate: app.querySelector("#claimAttendanceDate")?.value || "",
+      claimType: app.querySelector("#claimType")?.value || "",
+      proposedTime: app.querySelector("#claimProposedTime")?.value || "",
+      proposedCheckInTime: app.querySelector("#claimCheckInTime")?.value || "",
+      proposedCheckOutTime: app.querySelector("#claimCheckOutTime")?.value || "",
+      reason: app.querySelector("#claimReason")?.value || ""
+    };
+    saveState();
   };
   ["#claimAttendanceDate", "#claimType", "#claimProposedTime", "#claimCheckInTime", "#claimCheckOutTime"].forEach((selector) => {
     app.querySelector(selector)?.addEventListener("change", syncAttendanceClaimDraft);
