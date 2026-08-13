@@ -980,6 +980,24 @@ function normalizeState(input) {
   const normalized = { ...clone(defaultState), ...input };
   normalized.onboardingTemplate = { ...clone(defaultState.onboardingTemplate), ...(input.onboardingTemplate || {}) };
   normalized.onboardingTemplate.fields = mergeTemplateFields(defaultOnboardingFields, normalized.onboardingTemplate.fields);
+  
+  normalized.onboardingTemplate.fields = normalized.onboardingTemplate.fields.map((field) => {
+    if (["PresentAddressLine1", "PresentAddressLine2", "PresentPostOffice", "PresentPoliceStation", "PresentDistrict", "PresentState", "PresentPin", "PermanentAddressLine1", "PermanentAddressLine2", "PermanentPostOffice", "PermanentPoliceStation", "PermanentDistrict", "PermanentState", "PermanentPin"].includes(field.key)) {
+      if (field.label) {
+        field.label = field.label.replace("Present ", "").replace("Permanent ", "");
+        if (field.label.toLowerCase().includes("address line")) field.label = field.label.replace(/address line/i, "Address line");
+        if (field.label.toLowerCase().includes("post office")) field.label = "Post office";
+        if (field.label.toLowerCase().includes("police station")) field.label = "Police station";
+        if (field.label.toLowerCase().includes("district")) field.label = "District";
+        if (field.label.toLowerCase().includes("state")) field.label = "State";
+        if (field.label.toLowerCase().includes("pin")) field.label = "PIN";
+      }
+    }
+    if (["PresentAddressLine2", "PermanentAddressLine2"].includes(field.key)) {
+      field.required = false;
+    }
+    return field;
+  });
   normalized.activityTemplate = { ...clone(defaultState.activityTemplate), ...(input.activityTemplate || {}) };
   normalized.activityTemplate.fields = mergeTemplateFields(defaultActivityFields, normalized.activityTemplate.fields).map((field) => field.key === "group_client" ? { ...field, type: "groupClient", required: true } : field);
   normalized.employees = (normalized.employees || []).map((employee) => ({
