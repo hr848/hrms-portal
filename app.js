@@ -2563,9 +2563,12 @@ function renderAdminLeaveWfhCalendar(activeEmployees) {
   const canGoNext = new Date(`${nextMonth}-01T00:00:00`) <= new Date(`${maxMonth}-01T00:00:00`);
   const events = getAdminLeaveWfhEvents();
   const selectedDate = normalizeActivityDateValue(state.adminLeaveWfhCalendarDate || todayDdMmYyyy());
-  const selectedEmployeeId = state.adminLeaveWfhCalendarEmployeeId || state.selectedLeaveWfhEmployeeId || "";
-  const selectedEmployee = selectedEmployeeId ? activeEmployees.find((employee) => employee.id === selectedEmployeeId) || null : null;
+  const rawSelectedEmployeeId = state.adminLeaveWfhCalendarEmployeeId || state.selectedLeaveWfhEmployeeId || "";
+  let selectedEmployee = rawSelectedEmployeeId ? activeEmployees.find((employee) => employee.id === rawSelectedEmployeeId) || null : null;
   const selectedDateEvents = events.filter((event) => normalizeActivityDateValue(event.date) === selectedDate);
+  if (selectedEmployee && !selectedDateEvents.some(e => e.employeeId === selectedEmployee.id)) {
+    selectedEmployee = null;
+  }
   const employeeEvents = selectedEmployee ? events.filter((event) => event.employeeId === selectedEmployee.id) : [];
   const employeeById = new Map(activeEmployees.map((employee) => [employee.id, employee]));
   const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => `<div class="leave-wfh-calendar-weekday">${day}</div>`).join("");
