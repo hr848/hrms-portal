@@ -1194,15 +1194,10 @@ async function initializeSharedState() {
       render();
       return;
     }
-    state = normalizeState({ ...createEmptySharedState(), ...getClientStateSnapshot(state) });
-    saveClientState();
-    render();
+    console.warn("Remote state was not a valid object. Continuing with local browser data.");
   } catch (error) {
-    remoteStateConfigured = true;
-    state = normalizeState({ ...createEmptySharedState(), ...getClientStateSnapshot(state) });
-    saveClientState();
-    render();
-    console.warn("Shared HRMS MySQL database is not available. The portal did not load local JSON data.", error);
+    remoteStateConfigured = false;
+    console.warn("Shared HRMS MySQL database is not available. Continuing with local browser data.", error);
   }
 }
 function buildOfferContent(employee) {
