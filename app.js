@@ -5055,3 +5055,48 @@ logoutBtn.addEventListener("click", () => setState({ session: null, activeSectio
 
 render();
 initializeSharedState();
+
+document.addEventListener("change", async (event) => {
+  const input = event.target;
+  if (!input || !input.matches("input[type='file'][data-attachment-key]")) return;
+  
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const attachmentKey = input.dataset.attachmentKey;
+  const td = input.closest("td");
+  if (!td) return;
+  const nextTd = td.nextElementSibling;
+  if (!nextTd) return;
+  
+  nextTd.innerHTML = `<span class="muted">Uploading...</span>`;
+  
+  try {
+    const savedFileId = await window.uploadAttachment(file);
+    const employee = state.session?.role === "employee" 
+      ? state.employees.find(e => e.email === state.session.email)
+      : state.employees.find(e => e.id === state.selectedEmployeeId);
+      
+    if (!employee) return;
+    
+    const newAttachment = {
+      fileName: file.name,
+      savedFileId: savedFileId,
+      uploadedAt: `${todayDdMmYyyy()} ${formatTime()}`
+    };
+    
+    if (!employee.attachments) employee.attachments = {};
+    employee.attachments[attachmentKey] = newAttachment;
+    
+    nextTd.innerHTML = `<span class="pill success">Uploaded: ${escapeHtml(file.name)}</span><div class="muted">${escapeHtml(newAttachment.uploadedAt)}</div><button type="button" class="link-btn" style="padding:4px 0; margin-right: 8px;" onclick="viewSecureAttachment('${escapeHtml(savedFileId)}', '${escapeHtml(file.name)}')">View</button><button type="button" class="link-btn" style="padding:4px 0;" onclick="downloadSecureAttachment('${escapeHtml(savedFileId)}', '${escapeHtml(file.name)}')">Download</button>`;
+    
+    input.value = "";
+    
+    // Save to remote without rerendering the entire DOM
+    saveState();
+    
+  } catch (e) {
+    nextTd.innerHTML = `<span class="pill warning">Upload failed</span>`;
+    showModalMessage("Upload failed", `Failed to upload ${file.name}: ${e.message}`);
+  }
+});
