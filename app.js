@@ -13,8 +13,49 @@ const CLIENT_ONLY_STATE_KEYS = new Set([
   "adjustmentHistoryFilterEmployee", "adjustmentHistoryFilterDate", "wfhHistoryFilterEmployee", "wfhHistoryFilterMonth",
   "adminLeaveWfhReportSearch", "adminLeaveWfhReportEmployeeId", "adminLeaveWfhReportDateMode", "adminLeaveWfhReportMonth", "adminLeaveWfhReportYear", "adminLeaveWfhReportFrom", "adminLeaveWfhReportTo", "adminLeaveWfhReportType",
   "adminLeaveWfhCalendarMonth", "adminLeaveWfhCalendarDate", "adminLeaveWfhCalendarEmployeeId",
-  "wfhRequestDraft", "leaveRequestDraft", "leaveWfhCalendarMonth", "leaveWfhSelectedDates", "leaveWfhRequestType", "leaveWfhRequestReason", "leaveWfhDatePicker"
+  "wfhRequestDraft", "leaveRequestDraft", "leaveWfhCalendarMonth", "leaveWfhSelectedDates", "leaveWfhRequestType", "leaveWfhRequestReason", "leaveWfhDatePicker",
+  "adminSelectedEmployeeForClaims", "adminSelectedEmployeeForOvertime", "attendanceReportType"
 ]);
+
+window.uploadAttachment = async function(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(`${LOCAL_API_BASE}/api/upload`, {
+    method: "POST",
+    headers: { "X-API-Key": "hr848-secure-api-key-2026" },
+    body: formData
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Upload failed");
+  return data.savedFileId;
+};
+
+window.viewSecureAttachment = async function(fileId) {
+  const response = await fetch(`${LOCAL_API_BASE}/api/download?fileId=${encodeURIComponent(fileId)}`, {
+    headers: { "X-API-Key": "hr848-secure-api-key-2026" }
+  });
+  if (!response.ok) return showModalMessage("View failed", "Failed to load attachment.");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+};
+
+window.downloadSecureAttachment = async function(fileId, originalName) {
+  const response = await fetch(`${LOCAL_API_BASE}/api/download?fileId=${encodeURIComponent(fileId)}`, {
+    headers: { "X-API-Key": "hr848-secure-api-key-2026" }
+  });
+  if (!response.ok) return showModalMessage("Download failed", "Failed to download attachment.");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = originalName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
 const TEMP_PASSWORD = "welcome@123";
 
 const DOCX_REQUIRED_FIELD_KEYS = new Set([
