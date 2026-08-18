@@ -67,7 +67,7 @@ const DOCX_REQUIRED_FIELD_KEYS = new Set([
   "PermanentDistrict", "PermanentState", "PermanentPin", "educationalDetails"
 ]);
 
-const EDUCATION_HEADERS = ["Degree / PG / Diploma", "Marks/Percentage/CGPA", "University", "City", "Year of passing"];
+const EDUCATION_HEADERS = ["Degree / PG / Diploma", "Marks / Percentage / CGPA", "University", "City", "Year of passing"];
 const PREVIOUS_COMPANY_HEADERS = ["Name", "Address", "Designation", "Reporting", "Contact details"];
 const PROFILE_ATTACHMENT_REQUIREMENTS = [
   { key: "passportPhoto", label: "PASSPORT SIZE PHOTO 1 COPY" },
@@ -1022,6 +1022,9 @@ function normalizeState(input) {
   normalized.onboardingTemplate = { ...clone(defaultState.onboardingTemplate), ...(input.onboardingTemplate || {}) };
   normalized.onboardingTemplate.fields = mergeTemplateFields(defaultOnboardingFields, normalized.onboardingTemplate.fields);
   
+  const uanField = normalized.onboardingTemplate.fields.find((f) => f.key === "uanNo");
+  if (uanField) uanField.required = false;
+
   normalized.onboardingTemplate.fields = normalized.onboardingTemplate.fields.map((field) => {
     if (["PresentAddressLine1", "PresentAddressLine2", "PresentPostOffice", "PresentPoliceStation", "PresentDistrict", "PresentState", "PresentPin", "PermanentAddressLine1", "PermanentAddressLine2", "PermanentPostOffice", "PermanentPoliceStation", "PermanentDistrict", "PermanentState", "PermanentPin"].includes(field.key)) {
       if (field.label) {

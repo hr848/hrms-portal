@@ -531,7 +531,7 @@ function handleParseDocx() {
         set_field($fields, $labels, $field_key, $display_label, $value);
     }
     
-    $education_headers = ['Degree / PG / Diploma', 'Marks/Percentage/CGPA', 'University', 'City', 'Year of passing'];
+    $education_headers = ['Degree / PG / Diploma', 'Marks / Percentage / CGPA', 'University', 'City', 'Year of passing'];
     parse_tabular_entries($main_rows, 32 - 1, 6, $education_headers, 'Educational details', $fields, $labels); // -1 because 0-indexed in PHP array
     
     $prev_headers = ['Name', 'Address', 'Designation', 'Reporting', 'Contact details'];
