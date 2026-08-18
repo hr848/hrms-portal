@@ -60,14 +60,14 @@ const TEMP_PASSWORD = "welcome@123";
 
 const DOCX_REQUIRED_FIELD_KEYS = new Set([
   "legalName", "phone", "emergencyContact", "dateOfBirth", "personalMailId", "motherName", "fatherName",
-  "pan", "adharNo", "experienceType", "pfAvailable", "pfNo", "uanNo", "bankName",
+  "pan", "adharNo", "experienceType", "pfAvailable", "pfNo", "bankName",
   "accountNumber", "bankBranch", "accountType", "ifsc", "bankDetailsAttachment",
   "PresentAddressLine1", "PresentAddressLine2", "PresentPostOffice", "PresentPoliceStation", "PresentDistrict", "PresentState",
   "PresentPin", "PermanentAddressLine1", "PermanentAddressLine2", "PermanentPostOffice", "PermanentPoliceStation",
   "PermanentDistrict", "PermanentState", "PermanentPin", "educationalDetails"
 ]);
 
-const EDUCATION_HEADERS = ["Degree / PG / Diploma", "Marks obtained", "University", "City", "Year of passing"];
+const EDUCATION_HEADERS = ["Degree / PG / Diploma", "Marks/Percentage/CGPA", "University", "City", "Year of passing"];
 const PREVIOUS_COMPANY_HEADERS = ["Name", "Address", "Designation", "Reporting", "Contact details"];
 const PROFILE_ATTACHMENT_REQUIREMENTS = [
   { key: "passportPhoto", label: "PASSPORT SIZE PHOTO 1 COPY" },
